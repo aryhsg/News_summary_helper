@@ -1,4 +1,5 @@
 import os
+from unicodedata import category
 from dotenv import load_dotenv
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
@@ -112,10 +113,10 @@ class NewsDB:
                     print(f"讀取失敗: {e}") 
                     return []
 
-    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None):
+    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
-                if category:
+                if category and batch == None:
                     select_query = '''
                         SELECT category, news_id, title, content
                         FROM news
@@ -129,7 +130,21 @@ class NewsDB:
                         print(f"讀取失敗: {e}") 
                         return []
 
-                else:
+                if batch:
+                    select_query = '''
+                        SELECT news_id, title, content
+                        FROM news
+                        WHERE category = %s
+                        '''
+                    try:
+                        await cursor.execute(select_query, (category,))
+                        result = await cursor.fetchall()
+                        return result
+                    except Exception as e:
+                        print(f"讀取失敗: {e}") 
+                        return []
+
+                elif news_id:
                     select_query = '''
                         SELECT news_id, content
                         FROM news
