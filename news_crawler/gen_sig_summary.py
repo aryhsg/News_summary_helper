@@ -11,7 +11,16 @@ async def batch_generate_sg_summaries(category: str,news_list: list[dict], DB_in
     """
     news_list: [{"news_id": 1, "title": "...", "content": "..."}, {"news_id": 2, ...}]
     """
-    news_list = DB_instance.fetch_news_content(batch=True, category=category)
+
+    try:
+        news_list = DB_instance.fetch_news_content(batch=True, category=category)
+        if not news_list:
+            print("該類別目前暫無新聞")
+        else:
+            print(f"取得{category}類所有新聞，共{(len(news_list))}筆")
+    except Exception as e:
+        print(f"db error: {e}")
+        return 
     batch_size = 5
     news_batches = [news_list[i:i + batch_size] for i in range(0, len(news_list), batch_size)]
 
