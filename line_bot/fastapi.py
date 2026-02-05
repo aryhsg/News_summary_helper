@@ -1,3 +1,5 @@
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+print("目前的搜尋路徑有：", sys.path)
 import os
 import sys
 import json
@@ -7,15 +9,16 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from fastapi.responses import PlainTextResponse
-from line_bot.msg_templates import template_cate_news_list, template_catelist, template_sing_news
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-print("目前的搜尋路徑有：", sys.path)
+
 load_dotenv()
-from news_crawler import db
+from infrastructure import db
 from gemini import gemini_client
 from infrastructure.redis_manager import redis_manager
-
+from line_bot.msg_templates import templates
+cate_news_list = templates.Cate_News_list_Template()
+catelist = templates.CateList_Template()
+sing_news = templates.Single_News_Template()
 # -------------------------------------------------------------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,7 +43,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 DB = db.NewsDB()
 gemini = None
-cate_list = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
+CATE_LIST = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
 API_URL = "https://api.line.me/v2/bot/message/reply"
 # --- 從環境變數中讀取設定 ---
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
@@ -76,7 +79,7 @@ async def line_webhook_forwarder(request: Request):
             
             await return_catelist(d_body=decoded_body)
 
-        if decoded_body['events'][0]['type'] == 'postback' and decoded_body['events'][0]['postback']['data'] in cate_list:
+        if decoded_body['events'][0]['type'] == 'postback' and decoded_body['events'][0]['postback']['data'] in CATE_LIST:
             cate = decoded_body['events'][0]['postback']['data']
 
             print(f"確認類別成功， 類別為： {cate}")
@@ -95,14 +98,14 @@ async def line_webhook_forwarder(request: Request):
 
 # -------------------------------------------------------------------------------------------------------------------------------
 async def return_catelist(d_body: dict):
-    catelist = template_catelist.generate_flex_messages(d_body)
+    Cate_list = catelist.generate_flex_messages(d_body)
     header = {  
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
     }
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(API_URL, headers=header, json=catelist)
+            response = await client.post(API_URL, headers=header, json=Cate_list)
         except httpx.RequestError as e:
             print(f"請求錯誤: {e}")
             return
@@ -111,7 +114,7 @@ async def return_catelist(d_body: dict):
 
 # -------------------------------------------------------------------------------------------------------------------------------
 async def return_newslist(d_body: dict, query_result: list):
-    newslist = template_cate_news_list.generate_flex_messages(d_body, query_result)
+    newslist = cate_news_list.generate_flex_messages(d_body, query_result)
     header = {  
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
@@ -127,7 +130,7 @@ async def return_newslist(d_body: dict, query_result: list):
 
 # -------------------------------------------------------------------------------------------------------------------------------
 async def return_news_summary(d_body: dict, news_summary: str):  
-    news = template_sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary)
+    news = sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary)
     header = {  
         "Content-Type": "application/json",
         "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
