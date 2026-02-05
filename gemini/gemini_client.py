@@ -4,11 +4,8 @@ import asyncio
 import textwrap
 from google import genai
 from google.genai import types
+from gemini.json_schema import NewsSummarySchema
 from dotenv import load_dotenv
-#from json_schema import *
-#from gemini.json_schema import *
-from json_schema import NewsSummarySchema
-from x import contents
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
 
@@ -17,11 +14,17 @@ class gemini_client:
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY")).aio
 
         self.sg_system_instruction = """
-            你是一位專業的新聞編輯。
-            請閱讀新聞文章，並提取核心重點（最少 1 點，最多 5 點）。
-            內容必須準確反映文章資訊，包含關鍵事件與影響。
-            請將結果依照指定的 JSON 格式回傳。
-            以繁體中文回答。
+            你是一位專業的資料分析師和新聞編輯。你的任務是分析用戶提供的一篇新聞 JSON，並將其歸納為高品質的主題摘要，以繁體中文回答。
+
+            輸入格式： [{'news_id': int, 'title': str, 'content': str, 'category': str}]。
+
+            執行規範：
+            
+            精鍊原則： 每個 point 的內容請控制在 50-80 個中文字內，直接切入核心重點，避免冗贅的過渡句（如：根據報導指出...）。
+
+            數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
+
+            結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
             """
         
         self.batch_system_instruction="""
@@ -35,7 +38,7 @@ class gemini_client:
 
             數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
 
-            結構化： 嚴格遵守提供的 JSON Schema 輸出，確保 topic 具有概括性，且 points 數量介於 2 到 4 點。
+            結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
             """
 
         self.cate_system_instruction="""
@@ -47,7 +50,7 @@ class gemini_client:
 
             數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
 
-            結構化： 嚴格遵守提供的 JSON Schema 輸出，確保 topic 具有概括性，且 points 數量介於 2 到 4 點。
+            結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
 
             字數節流： 總體輸出的文字量需精簡，以利於在行動裝置上閱讀。
             """
@@ -84,16 +87,19 @@ class gemini_client:
             # 建議：sg 模式通常是為了閱讀，建議用 text/plain
             mime_type = "application/json" 
             response_schema=NewsSummarySchema.model_json_schema()
+
         elif instruction_type == "batch":
             system_instruction = self.cate_system_instruction
             max_output_tokens = 10000
             mime_type = "application/json" 
             response_schema=NewsSummarySchema.model_json_schema()
+
         elif instruction_type == "cate":
             system_instruction = self.cate_system_instruction
             max_output_tokens = 10000
             mime_type = "text/plain" 
             #response_schema=Cate_NewsSummarySchema
+
         else:
             raise ValueError("Invalid instruction_type")
 
@@ -106,7 +112,7 @@ class gemini_client:
         )
 
         response = await self.client.models.generate_content(
-            model="gemini-2.5-flash", 
+            model="gemini-2.5-flash-lite", 
             contents=contents, 
             config=config
         )

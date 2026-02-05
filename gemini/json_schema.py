@@ -7,6 +7,7 @@ class SinglePoint(BaseModel):
 
 
 class NewsSummarySchema(BaseModel):
+    news_id: str = Field(description="原始新聞id (news_id)")
     title: str = Field(description="原始新聞標題")
     points: List[SinglePoint] = Field(description="新聞摘要的條列式重點，最多5點")
     

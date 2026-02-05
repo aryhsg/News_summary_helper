@@ -40,7 +40,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 DB = db.NewsDB()
 gemini = None
-NEWS_ID_LOCK = {}
 cate_list = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
 API_URL = "https://api.line.me/v2/bot/message/reply"
 # --- 從環境變數中讀取設定 ---
@@ -144,7 +143,7 @@ async def return_news_summary(d_body: dict, news_summary: str):
 # -------------------------------------------------------------------------------------------------------------------------------
 async def generate_summary_with_lock(news_id:int):
     result = await DB.fetch_specific_summary(news_id)
-    
+
     if result and result[0].get("news_summary"):
         summary = result[0].get("news_summary")
         print("資料庫存在該新聞摘要")
@@ -158,13 +157,20 @@ async def generate_summary_with_lock(news_id:int):
             return summary
 
         print("該新聞目前無摘要，正在生成中...")
-        query_result = await DB.fetch_news_content(news_id)
-        news_content = query_result[0]["content"]
-        summary = await gemini.generate_summary(instruction_type = "sg", contents = news_content)
-        await DB.insert_news_summary([(news_id, summary)])
+        query_result = await DB.fetch_news_content(news_id) # [(news_id, title, content, category)]
+        contents = json.dumps(query_result) # GEMINI不收list，所以要轉成json字串
+        category = query_result[0]["category"]
+    
+        result = await gemini.generate_summary(instruction_type = "sg", contents = contents) # 預計會follow NewsSummarySchema
+        result = json.loads(result)
+        print(result)
+        summary = result[0].get("points", [])
+        summary_str = ""
+        for i, p in enumerate(summary):
+            summary_str += f"{i+1}. {p}\n"
+        await DB.insert_news_summary([(result[0].get("news_id", ""), summary_str, category)])
         print("摘要成功存入資料庫")
-        print(f"目前的news_id_lock: {NEWS_ID_LOCK}")
-        return summary
+        return summary_str
 
 
 # -------------------------------------------------------------------------------------------------------------------------------

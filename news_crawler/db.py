@@ -70,8 +70,8 @@ class NewsDB:
         async with self.pool.connection() as connection:
             async with connection.cursor() as cursor:
                 insert_query = '''
-                    INSERT INTO single_news_summary (news_id, news_summary)
-                    VALUES (%s, %s)
+                    INSERT INTO single_news_summary (news_id, news_summary, category)
+                    VALUES (%s, %s, %s)
                     ON CONFLICT (news_id) DO NOTHING
                     '''
                 try:
@@ -97,29 +97,28 @@ class NewsDB:
                     print(f"讀取失敗: {e}") 
                     return []
     
-    async def fetch_specific_summary(self, news_id: int):
+    async def fetch_specific_summary(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                    SELECT news_id, news_summary
-                    FROM single_news_summary
-                    WHERE news_id = %s
-                    '''
-                try:
-                    await cursor.execute(select_query, (news_id,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-
-    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                if category and batch == None:
+                if news_id:
                     select_query = '''
-                        SELECT category, news_id, title, content
-                        FROM news
+                        SELECT news_id, news_summary, category
+                        FROM single_news_summary
+                        WHERE news_id = %s
+                        '''
+                    
+                    try:
+                        await cursor.execute(select_query, (news_id,))
+                        result = await cursor.fetchall()
+                        return result
+                    except Exception as e:
+                            print(f"讀取失敗: {e}") 
+                            return []
+
+                if category:
+                    select_query = '''
+                        SELECT news_id, news_summary
+                        FROM single_news_summary
                         WHERE category = %s
                         '''
                     try:
@@ -129,6 +128,24 @@ class NewsDB:
                     except Exception as e:
                         print(f"讀取失敗: {e}") 
                         return []
+
+    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                if category:
+                    if not batch:
+                        select_query = '''
+                            SELECT category, news_id, title, content
+                            FROM news
+                            WHERE category = %s
+                            '''
+                        try:
+                            await cursor.execute(select_query, (category,))
+                            result = await cursor.fetchall()
+                            return result
+                        except Exception as e:
+                            print(f"讀取失敗: {e}") 
+                            return []
 
                 if batch:
                     select_query = '''
@@ -146,7 +163,7 @@ class NewsDB:
 
                 elif news_id:
                     select_query = '''
-                        SELECT news_id, content
+                        SELECT news_id, title, content, category
                         FROM news
                         WHERE news_id = %s
                         '''
