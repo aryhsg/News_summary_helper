@@ -118,13 +118,16 @@ class Single_News_Template(Templates): # 單篇新聞摘要模板
         """
         根據新聞數據和分類，生成完整的 Flex Message JSON 結構。
         """
-        self.msg_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
-        self.msg_temp["contents"][0]["text"] = news_summary
-        self.msg_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣"
-        self.msg_body["messages"][0]["contents"]["footer"]["contents"][0]["action"]["uri"] = msg["events"][0]["postback"]["data"]
-        self.msg_body["messages"][0]["contents"]["body"]["contents"].append(self.msg_temp)
+        current_body = copy.deepcopy(self.msg_body)
+        current_temp = copy.deepcopy(self.msg_temp)
 
-        return self.msg_body
+        current_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
+        current_temp["contents"][0]["text"] = news_summary
+        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣"
+        current_body["messages"][0]["contents"]["footer"]["contents"][0]["action"]["uri"] = msg["events"][0]["postback"]["data"]
+        current_body["messages"][0]["contents"]["body"]["contents"].append(current_temp)
+
+        return current_body
 
 
 class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
@@ -493,7 +496,7 @@ class CateList_Template(Templates): # 類別列表模板
             # 3. 修改這個「副本」的內容
             temp_item["contents"][0]["text"] = cate
             
-            if msg['events'][0]["message"]["text"] == "查詢類別新聞":
+            if msg['events'][0]["message"]["text"] == "請選擇感興趣類別":
                 temp_item["action"]["data"] = cate
                 temp_item["action"]["displayText"] = f"正在載入【{cate}】新聞列表..."
             else:

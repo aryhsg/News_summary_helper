@@ -57,7 +57,6 @@ class NewsDB:
                 insert_query = '''
                     INSERT INTO cate_summary (category, summary)
                     VALUES (%s, %s)
-                    ON CONFLICT (category) DO NOTHING
                     '''
                 try:
                     await cursor.executemany(insert_query, cate_list)
@@ -129,7 +128,7 @@ class NewsDB:
                         print(f"讀取失敗: {e}") 
                         return []
 
-    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
+    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None, keyword: str | None = None):
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
                 if category:
@@ -161,7 +160,7 @@ class NewsDB:
                         print(f"讀取失敗: {e}") 
                         return []
 
-                elif news_id:
+                if news_id:
                     select_query = '''
                         SELECT news_id, title, content, category
                         FROM news
@@ -174,6 +173,23 @@ class NewsDB:
                     except Exception as e:
                         print(f"讀取失敗: {e}") 
                         return []
+                    
+                if keyword:
+                    select_query = '''
+                        SELECT category, url , news_id, title
+                        FROM news
+                        WHERE %s = ANY(keywords)
+                        '''
+                    try:
+                        await cursor.execute(select_query, (keyword,))
+                        result = await cursor.fetchall()
+                        if result:
+                            return result
+                        else: 
+                            return None
+                    except Exception as e:
+                        print(f"讀取失敗: {e}") 
+                        return None
 
     async def fetch_cate_summary(self, category: str):
         async with self.pool.connection() as connection:
@@ -190,3 +206,16 @@ class NewsDB:
                 except Exception as e:
                     print(f"讀取失敗: {e}") 
                     return []
+
+    async def truncate_table(self, table: str):
+        async with self.pool.connection() as connection:
+            async with connection.cursor() as cursor:
+                query = f"""
+                    TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;
+                """
+                try:
+                    await cursor.execute(query)
+                    await connection.commit()
+                    print(f"Table {table} deleted successfully!")
+                except Exception as e:
+                    print(f"Error deleting table {table}: {e}")
