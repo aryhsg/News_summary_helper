@@ -207,6 +207,53 @@ class NewsDB:
                     print(f"讀取失敗: {e}") 
                     return []
 
+    async def web_fetch_news(self):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
+                            FROM news
+                            '''
+                try:
+                    await cursor.execute(select_query)
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
+                
+    async def web_fetch_news_contents(self, news_id: int):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                            SELECT news_id AS id, title AS title, category AS category, article_image AS img,content AS content
+                            FROM news
+                            WHERE news_id = %s
+                            '''
+                try:
+                    await cursor.execute(select_query, (news_id,))
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
+
+    async def web_search_news(self, keyword: str):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
+                            FROM news
+                            WHERE %s = ANY(keywords)
+                            '''
+                try:
+                    await cursor.execute(select_query, (keyword,))
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
+
     async def truncate_table(self, table: str):
         async with self.pool.connection() as connection:
             async with connection.cursor() as cursor:
