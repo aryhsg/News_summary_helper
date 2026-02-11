@@ -1,20 +1,16 @@
-import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 # 找到當前檔案所在的目錄，並指名尋找 .env
-env_path = Path(__file__).resolve().parent / ".env"
 root_path = Path(__file__).resolve().parent
 sys.path.append(str(root_path / "line_bot"))
-load_dotenv(dotenv_path=env_path)
+load_dotenv()
 
-
-# 3. 接下來才 import 你的模組
 import uvicorn
 import asyncio
-from line_bot.fastapi_service import create_line_app, global_lifespan
-from web.api import create_web_app
+from line_bot import create_line_app, global_lifespan
+from web import create_web_app
 from gemini import gemini_client
 from infrastructure import db
 from infrastructure import redis_manager

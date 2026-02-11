@@ -2,7 +2,7 @@
 每小時定時執行爬蟲，將爬取的新聞存入資料庫
 """
 
-from news_crawler import scrapers
+from news_crawler import scrape_news
 import infrastructure.db as db
 import infrastructure.redis_manager as redis_manager
 import gemini.gemini_client as gemini_client
@@ -31,7 +31,7 @@ async def db_lifespan():
 
 async def scrape_n_store(db):
     print("開始爬蟲")
-    news = await scrapers.scrape_news()
+    news = await scrape_news()
     try:
         await db.insert_news(news)
         print("新聞成功存入資料庫")
