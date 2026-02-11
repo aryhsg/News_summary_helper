@@ -1,11 +1,7 @@
 import os
 from unicodedata import category
-from dotenv import load_dotenv
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
-
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path)
 
 class NewsDB:
     def __init__(self):
@@ -266,3 +262,5 @@ class NewsDB:
                     print(f"Table {table} deleted successfully!")
                 except Exception as e:
                     print(f"Error deleting table {table}: {e}")
+
+

@@ -1,10 +1,10 @@
 import requests
-import infrastructure.db as db
+#import infrastructure.db as db
 import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
-DB = db.NewsDB()
+#DB = db.NewsDB()
 
 async def scrape_news():
     try:

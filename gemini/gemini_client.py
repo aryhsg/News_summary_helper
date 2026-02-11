@@ -80,6 +80,7 @@ class gemini_service:
         # 用兩個換行符號分隔每一點，閱讀起來更舒適
         return "\n".join(response)
 
+
     async def generate_summary(self, instruction_type, contents):
         if instruction_type == "sg":
             system_instruction = self.sg_system_instruction

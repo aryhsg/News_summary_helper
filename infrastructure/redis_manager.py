@@ -1,9 +1,7 @@
 import redis.asyncio as redis  # 務必使用 .asyncio 版本
 import os
-from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-load_dotenv()  # 從 .env 檔案載入環境變數
 
 
 class RedisManager:

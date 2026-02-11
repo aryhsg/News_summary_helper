@@ -6,18 +6,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from fastapi.responses import PlainTextResponse
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-print("目前的搜尋路徑有：", sys.path)
-load_dotenv()
 from line_service import line_forward_rules
 
 
 # -------------------------------------------------------------------------------------------------------------------------------
 @asynccontextmanager
-async def lifespan(db_instance, gemini_instance, redis_instance):
+async def global_lifespan(db_instance, gemini_instance, redis_instance):
 
-    print(f"DEBUG: DB_HOST is {os.environ.get('DB_HOST')}")
+    print(f"DEBUG: DB_HOST is {os.environ.get('HOST')}")
     try:
         # --- App 啟動時執行 ---
         await db_instance.pool_init() 
@@ -36,12 +32,12 @@ async def lifespan(db_instance, gemini_instance, redis_instance):
         await asyncio.sleep(0.1)
 
 
-def create_app(db, gemini, redis):
+def create_line_app(db_instance, gemini_instance, redis_instance):
     app = FastAPI()
     line_forward = line_forward_rules(
-        db_instance=db, 
-        gemini_instance=gemini, 
-        redis_instance=redis
+        db_instance=db_instance, 
+        gemini_instance=gemini_instance, 
+        redis_instance=redis_instance
         )
 
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
