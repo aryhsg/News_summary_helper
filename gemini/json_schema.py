@@ -13,16 +13,13 @@ class NewsSummarySchema(BaseModel):
     
 # ----------------------------------------------------------------------------------------
 
-class SinglePoint(BaseModel):
-    point: str = Field(description="單條摘要重點內容，需簡潔有力")
-    source_ids: List[int] = Field(
-        description="這條重點所引用的新聞 ID 列表（對應輸入 JSON 中的 ID）",
-        default=[]
-    )
+class InsightPoint(BaseModel):
+    topic: str = Field(..., description="核心主題或趨勢名稱（如：中東局勢升溫、季報獲利預警）。")
+    description: str = Field(..., description="詳細的分析邏輯，需整合具體事實與數據。")
+    source_ids: List[int] = Field(..., description="對應的新聞 ID 列表。")
 
-class Cate_NewsSummarySchema(BaseModel):
-    topic: str = Field(description="這組新聞的綜合主題大標題（例如：半導體產業動態）")
-    summary_analysis: str = Field(description="針對這類別新聞的一句總結評論")
-    points: List[SinglePoint] = Field(
-        description="新聞摘要的條列式重點，最少2點，最多4點"
-    )
+class CategorySummary(BaseModel):
+    digest_title: str = Field(..., description="為此彙總報告取一個具有專業新聞感的標題。")
+    brief_overview: str = Field(..., description="一句話總覽該類別目前的整體態勢（30-50字內）。")
+    insight_points: List[InsightPoint] = Field(..., description="分類的主題洞察清單。")
+    future_watch: str = Field(..., description="後續值得關注的關鍵節點、日期或潛在風險預測。")

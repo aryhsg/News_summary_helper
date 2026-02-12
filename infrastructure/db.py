@@ -187,6 +187,23 @@ class NewsDB:
                         print(f"讀取失敗: {e}") 
                         return None
 
+    async def fetch_news_summary(self, category: str):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                    SELECT n.news_id, n.title, s.category, s.news_summary
+                    FROM single_news_summary s
+                    INNER JOIN news n ON s.news_id = n.news_id
+                    WHERE s.category = %s
+                    '''
+                try:
+                    await cursor.execute(select_query, (category,))
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
+
     async def fetch_cate_summary(self, category: str):
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:

@@ -4,7 +4,7 @@ import asyncio
 import textwrap
 from google import genai
 from google.genai import types
-from gemini.json_schema import NewsSummarySchema
+from gemini.json_schema import NewsSummarySchema, CategorySummary
 from dotenv import load_dotenv
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
@@ -30,20 +30,6 @@ class gemini_service:
         self.batch_system_instruction="""
             你是一位專業的資料分析師和新聞編輯。你的任務是分析用戶提供的多篇新聞 JSON，並將其歸納為高品質的主題摘要，以繁體中文回答。
 
-            輸入格式： [{'news_id': int, 'title': str, 'content': str}]。
-
-            執行規範：
-            
-            精鍊原則： 每個 point 的內容請控制在 50-80 個中文字內，直接切入核心重點，避免冗贅的過渡句（如：根據報導指出...）。
-
-            數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
-
-            結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
-            """
-
-        self.cate_system_instruction="""
-            你是一位專業的資料分析師和新聞編輯。你的任務是分析用戶提供的多篇新聞 JSON，並將其歸納為高品質的主題摘要，以繁體中文回答。
-
             執行規範：
             
             精鍊原則： 每個 point 的內容請控制在 50-80 個中文字內，直接切入核心重點，避免冗贅的過渡句（如：根據報導指出...）。
@@ -53,6 +39,26 @@ class gemini_service:
             結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
 
             字數節流： 總體輸出的文字量需精簡，以利於在行動裝置上閱讀。
+            """
+
+        self.cate_system_instruction="""
+            你是一位專業的資深新聞情報官，擅長從離散的資訊中提取宏觀趨勢與關鍵數據。
+
+            任務目標：請根據提供的多則新聞摘要，產出一個具有高度概括性與洞察力的【類別彙總報告】。
+
+            輸入格式： [{'news_id': int, 'title': str, 'category': str, 'news_summary': str}]。
+
+            通用分析指南：
+
+            趨勢聚合：識別多則新聞之間是否存在共同的背景、因果關係或發展趨勢（例如：地緣政治緊張、市場情緒轉變、政策連鎖反應）。
+
+            核心要素提取：精確整合每則新聞中的「關鍵人物/組織」、「具體指標/數據（如：百分比、匯率、傷亡數、獲利）」以及「發生時地」。
+
+            衝突與影響力：若涉及多方觀點（如兩岸或國際事務），請中立呈現核心爭議點，並分析這些事件對該領域的潛在後續影響。
+
+            層次化呈現：由宏觀（今日總結）到微觀（具體事件分析），確保資訊流暢且具備專業性。
+
+            結構化： 嚴格遵守提供的 JSON Schema 輸出。
             """
 
     def _format_data(self, data: list):
@@ -90,7 +96,7 @@ class gemini_service:
             response_schema=NewsSummarySchema.model_json_schema()
 
         elif instruction_type == "batch":
-            system_instruction = self.cate_system_instruction
+            system_instruction = self.batch_system_instruction
             max_output_tokens = 10000
             mime_type = "application/json" 
             response_schema=NewsSummarySchema.model_json_schema()
@@ -98,8 +104,8 @@ class gemini_service:
         elif instruction_type == "cate":
             system_instruction = self.cate_system_instruction
             max_output_tokens = 10000
-            mime_type = "text/plain" 
-            #response_schema=Cate_NewsSummarySchema
+            mime_type = "application/json" 
+            response_schema=CategorySummary.model_json_schema()
 
         else:
             raise ValueError("Invalid instruction_type")
