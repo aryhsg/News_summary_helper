@@ -134,7 +134,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
     def __init__(self):
         super().__init__()
         self.msg_body = {
-    "replyToken": f"{_('Webhook').first().json.body.events[0].replyToken}",
+    "replyToken": f"",
     "messages": [
         {
             "type": "flex",
@@ -213,8 +213,16 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
     "paddingEnd": "md"
 }
 
-    def generate_flex_messages(msg, news_summary: str):
-        pass
+    def generate_flex_messages(self, msg, cate_summary: str):
+        current_body = copy.deepcopy(self.msg_body)
+        current_temp = copy.deepcopy(self.msg_temp)
+
+        current_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
+        current_temp["contents"][0]["text"] = cate_summary
+        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣"
+        current_body["messages"][0]["contents"]["body"]["contents"].append(current_temp)
+
+        return current_body        
 
 
 

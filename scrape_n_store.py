@@ -39,12 +39,17 @@ async def scrape_n_store(db):
         print(f"db error: {e}")
 
 async def main():
-    async with db_lifespan() as (db, redis, gemini):
         try:
-            await scrape_n_store(db=db)
-            await gen_sig_summary.batch_gen_all_sum_n_store(db=db, gemini=gemini, redis=redis)
+            async with db_lifespan() as (db, redis, gemini):
+                await scrape_n_store(db=db)
+
+            print("finish scraping")
+            await asyncio.sleep(300)
+            
+            async with db_lifespan() as (db, redis, gemini):
+                await gen_sig_summary.batch_gen_all_sum_n_store(db=db, gemini=gemini, redis=redis)
         except Exception as e:
-            print(f"Error in main: {e}")
+                print(f"Error in main: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -47,17 +47,17 @@ class NewsDB:
                 except Exception as e:
                     print(f"寫入失敗: {e}")
 
-    async def insert_cate_summary(self,cate_list):
+    async def insert_cate_summary(self, category, cate_summary_tuple):
         async with self.pool.connection() as connection:
             async with connection.cursor() as cursor:
                 insert_query = '''
-                    INSERT INTO cate_summary (category, summary)
+                    INSERT INTO cate_news_summary (category, news_summary)
                     VALUES (%s, %s)
                     '''
                 try:
-                    await cursor.executemany(insert_query, cate_list)
+                    await cursor.execute(insert_query, cate_summary_tuple)
                     await connection.commit()
-                    print(f"成功處理 {len(cate_list)} 筆摘要")
+                    print(f"成功寫入 {category} 類摘要")
                 except Exception as e:
                     print(f"寫入失敗: {e}")       
 

@@ -2,11 +2,12 @@ import httpx
 import os
 import json
 
-from gemini import gen_summary_lock
+from gemini import gen_summary_lock, get_str_summary
 from line_bot.msg_templates import templates
 cate_news_list = templates.Cate_News_list_Template()
 catelist = templates.CateList_Template()
 sing_news = templates.Single_News_Template()
+cate_news = templates.Cate_News_Summary_Template()
 
 
 
@@ -27,6 +28,12 @@ class line_forward_rules:
                 # 這裡會等待回覆完成才回傳 OK 給 LINE
                 
                 await self.__return_catelist(d_body)
+
+            
+            if d_body['events'][0]['type'] == 'message' and d_body['events'][0]['message']['text'] == '選擇欲生成摘要的類別':
+                # 類別摘要
+                
+                await self.__return_catelist(d_body)   
 
             if d_body['events'][0]['type'] == 'message' and d_body['events'][0]['message']['text'] != '請選擇感興趣類別':
                 # 關鍵字查詢
@@ -49,6 +56,17 @@ class line_forward_rules:
                     await self.__return_newslist(d_body=d_body, query_result=result)
                 else: 
                     await self.text_message(d_body=d_body, has_news=False)
+
+
+            if d_body['events'][0]['type'] == 'postback' and "_摘要" in d_body['events'][0]['postback']['data']:
+                cate = d_body['events'][0]['postback']['data'].split("_")[0]
+
+                print(f"確認類別成功， 類別為： {cate}")
+
+                result = await self.db.fetch_cate_summary(category= cate)
+                summary = get_str_summary(raw_summary=result[0])
+
+                await self.__return_cate_summary(d_body=d_body, cate_summary=summary)
 
             if d_body['events'][0]['type'] == 'postback' and d_body['events'][0]['postback']['data'].startswith("http") :
                 url = d_body['events'][0]['postback']['data']
@@ -104,6 +122,24 @@ class line_forward_rules:
         print(f"回覆訊息狀態碼: {response.status_code}")
         print(f"回覆訊息內容: {response.text}")
 
+
+    # -------------------------------------------------------------------------------------------------------------------------------
+    async def __return_cate_summary(self, d_body, cate_summary: str):  
+        news = cate_news.generate_flex_messages(msg= d_body, cate_summary= cate_summary)
+        header = {  
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
+        }
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(self.API_URL, headers=header, json=news)
+            except httpx.RequestError as e:
+                print(f"請求錯誤: {e}")
+                return
+        print(f"回覆訊息狀態碼: {response.status_code}")
+        print(f"回覆訊息內容: {response.text}")
+
+    # -------------------------------------------------------------------------------------------------------------------------------
     async def text_message(self, d_body, has_news: bool | None = None):
 
         header = {  

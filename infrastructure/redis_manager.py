@@ -8,6 +8,7 @@ class RedisManager:
     def __init__(self):
         # 從環境變數讀取連線資訊，增加彈性
         self.redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
+        self.redis_password = os.environ.get("REDIS_PASSWORD")
         self.pool = None
 
     async def init_pool(self):
@@ -15,6 +16,7 @@ class RedisManager:
         if not self.pool:
             self.pool = redis.from_url(
                 self.redis_url, 
+                password = self.redis_password,
                 decode_responses=True, 
                 encoding="utf-8"
             )
