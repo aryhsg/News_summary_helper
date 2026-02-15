@@ -65,8 +65,12 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
     async def get_cate_summary(category: str):
         newsdb = db_instance
         raw_summary = await newsdb.fetch_cate_summary(category= category)
-        summary = get_formatted_summary(raw_summary=raw_summary[0])
-        return {"category": category, "summary": summary}
+        if raw_summary: 
+
+            summary = get_formatted_summary(raw_summary=raw_summary[0])
+            return {"category": category, "summary": summary}
+        else:
+            return {"category": category, "summary": "該類別尚無摘要"}
     
 
     return app

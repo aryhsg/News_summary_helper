@@ -50,11 +50,11 @@ def get_formatted_summary(raw_summary: dict):
         topic = item.get("topic", "")
         analysis = item.get("analysis", "")
         # 使用 <h3> 和 <p> 進行簡單網頁排版
-        section = f"<h3>{topic}</h3>\n\n<p style='text-align: justify;'>{analysis}</p>"
+        section = f"<br><h3>{topic}</h3>\n<br>\n<p style='text-align: justify;'>{analysis}</p>"
         trend_sections.append(section)
     
     # 2. 取得主標題並用 <h2> 包起來
-    report_title = raw_summary.get("report_title", "今日新聞摘要")
+    report_title = raw_data.get("report_title", "今日新聞摘要")
     title_html = f"<h2>{report_title}</h2>\n<hr>"
     
     # 3. 將所有區塊組合成一個大字串，中間用換行隔開
