@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: aryhsg1520
       POSTGRES_DB: news_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - /home/aryhsg/News_summary_helper/infrastructure/news_database/postgres_data:/var/lib/postgresql/data
 
@@ -17,8 +17,8 @@ services:
     container_name: news_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - /home/aryhsg/News_summary_helper/infrastructure/news_database/redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
 

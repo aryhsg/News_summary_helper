@@ -1,9 +1,5 @@
 from db import NewsDB
 import asyncio
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 
 single_query = """
 CREATE TABLE IF NOT EXISTS single_news_summary (

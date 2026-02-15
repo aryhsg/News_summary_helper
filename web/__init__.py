@@ -1,0 +1,1 @@
+from .fastapi_service import create_web_app
