@@ -1,6 +1,6 @@
 from typing import List
 from pydantic import BaseModel
-from gemini import gen_summary_lock
+from gemini import gen_summary_lock, get_formatted_summary
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,6 +15,10 @@ class NewsDetail(NewsListItem):
 
 class NewsSummary(BaseModel):
     id: int
+    summary: str
+
+class CateSummary(BaseModel):
+    category: str
     summary: str
 
 def create_web_app(db_instance, gemini_instance, redis_instance):
@@ -57,4 +61,12 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         results = await newsdb.web_search_news(keyword=keyword)
         return results
     
+    @app.post("/api/news/summary/{category}", response_model=CateSummary)
+    async def get_cate_summary(category: str):
+        newsdb = db_instance
+        raw_summary = await newsdb.fetch_cate_summary(category= category)
+        summary = get_formatted_summary(raw_summary=raw_summary[0])
+        return {"category": category, "summary": summary}
+    
+
     return app

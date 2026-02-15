@@ -11,7 +11,7 @@ import uvicorn
 import asyncio
 from line_bot import create_line_app, global_lifespan
 from web import create_web_app
-from gemini import gemini_client
+from gemini import gemini_client, get_str_summary
 from infrastructure import db
 from infrastructure import redis_manager
 

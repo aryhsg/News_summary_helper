@@ -138,7 +138,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
     "messages": [
         {
             "type": "flex",
-            "altText": f"",
+            "altText": f"123",
             "contents": {
                 "type": "bubble",
                 "size": "giga",
@@ -246,7 +246,7 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
                             "type": "text",
                             # 替換成實際的分類
                             "text": f"🗂️ 以下是類新聞列表", 
-                            "size": "lg",
+                            "size": "sm",
                             "weight": "bold",
                             "margin": "none",
                             "color": "#e7ecef"
