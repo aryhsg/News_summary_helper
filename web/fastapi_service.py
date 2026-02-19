@@ -51,7 +51,7 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         newsdb = db_instance
         redis = redis_instance
         gemini = gemini_instance
-        summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
+        title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
         html_summary = gen_summary_lock.advanced_format_summary(summary)
         return {"id": news_id, "summary": html_summary}
 

@@ -97,9 +97,10 @@ class NewsDB:
             async with connection.cursor(row_factory=dict_row) as cursor:
                 if news_id:
                     select_query = '''
-                        SELECT news_id, news_summary, category
-                        FROM single_news_summary
-                        WHERE news_id = %s
+                        SELECT s.news_id, s.news_summary, s.category, n.title
+                        FROM single_news_summary s
+                        INNER JOIN news n ON s.news_id = n.news_id
+                        WHERE s.news_id = %s
                         '''
                     
                     try:

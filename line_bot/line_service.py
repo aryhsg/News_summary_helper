@@ -66,13 +66,13 @@ class line_forward_rules:
                 result = await self.db.fetch_cate_summary(category= cate)
                 summary = get_str_summary(raw_summary=result[0])
 
-                await self.__return_cate_summary(d_body=d_body, cate_summary=summary)
+                await self.__return_cate_summary(d_body=d_body, cate_summary=summary, category=cate)
 
             if d_body['events'][0]['type'] == 'postback' and d_body['events'][0]['postback']['data'].startswith("http") :
                 url = d_body['events'][0]['postback']['data']
                 news_id = url.split("/")[-1].split("?")[0]
-                summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
-                await self.__return_news_summary(d_body=d_body, news_summary=summary)
+                title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
+                await self.__return_news_summary(d_body=d_body, news_summary=summary, title=title)
 
 
     async def __return_catelist(self, d_body):
@@ -107,8 +107,8 @@ class line_forward_rules:
         print(f"回覆訊息內容: {response.text}")
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def __return_news_summary(self, d_body, news_summary: str):  
-        news = sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary)
+    async def __return_news_summary(self, d_body, news_summary: str, title: str):  
+        news = sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary, title= title)
         header = {  
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
@@ -124,8 +124,8 @@ class line_forward_rules:
 
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def __return_cate_summary(self, d_body, cate_summary: str):  
-        news = cate_news.generate_flex_messages(msg= d_body, cate_summary= cate_summary)
+    async def __return_cate_summary(self, d_body, cate_summary: str, category: str):  
+        news = cate_news.generate_flex_messages(msg= d_body, cate_summary= cate_summary, cate= category)
         header = {  
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
