@@ -25,9 +25,9 @@ async def start_all():
         line_app = create_line_app(db_instance= DB, gemini_instance= Gemini, redis_instance= Redis)
         web_app = create_web_app(db_instance= DB, gemini_instance= Gemini, redis_instance= Redis)
         # 啟動 line_bot 服務
-        line_config = uvicorn.Config(line_app, host="0.0.0.0", port=5000)
+        line_config = uvicorn.Config(line_app, host="127.0.0.1", port=5000, lifespan="on")
         line_server = uvicorn.Server(line_config)
-        web_config = uvicorn.Config(web_app, host="0.0.0.0", port=8000, lifespan="on")
+        web_config = uvicorn.Config(web_app, host="127.0.0.1", port=8000, lifespan="on")
         web_server = uvicorn.Server(web_config)
 
         print("📡 系統啟動中：LINE Bot (5000) & Web API (8000)")

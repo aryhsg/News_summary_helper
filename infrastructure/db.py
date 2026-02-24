@@ -282,3 +282,36 @@ class NewsDB:
                     print(f"Error deleting table {table}: {e}")
 
 
+    async def test_web_fetch_news(self):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
+                            FROM news
+                            WHERE category in ('要聞', '國際', '證券', '期貨', '產業', '金融', '理財')
+                            '''
+                try:
+                    await cursor.execute(select_query)
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
+
+
+    async def test_web_fetch_specific_summary(self, news_id: int):
+        async with self.pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                select_query = '''
+                        SELECT s.news_id, s.news_summary, s.category, n.title
+                        FROM single_news_summary s
+                        INNER JOIN news n ON s.news_id = n.news_id
+                        WHERE s.news_id = %s
+                            '''
+                try:
+                    await cursor.execute(select_query, (news_id,))
+                    result = await cursor.fetchall()
+                    return result
+                except Exception as e:
+                    print(f"讀取失敗: {e}") 
+                    return []
