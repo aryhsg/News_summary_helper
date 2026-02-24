@@ -258,10 +258,12 @@ class NewsDB:
                 select_query = '''
                             SELECT news_id AS id, title AS title, category AS category, article_image AS img
                             FROM news
-                            WHERE %s = ANY(keywords)
+                            WHERE title ILIKE %s
+                            OR %s = ANY(keywords)
                             '''
                 try:
-                    await cursor.execute(select_query, (keyword,))
+                    
+                    await cursor.execute(select_query, (f"%{keyword}%", keyword))
                     result = await cursor.fetchall()
                     return result
                 except Exception as e:
