@@ -53,6 +53,7 @@ class NewsDB:
                 insert_query = '''
                     INSERT INTO cate_news_summary (category, news_summary)
                     VALUES (%s, %s)
+                    ON CONFLICT (category) DO UPDATE SET news_summary = EXCLUDED.news_summary
                     '''
                 try:
                     await cursor.execute(insert_query, cate_summary_tuple)
