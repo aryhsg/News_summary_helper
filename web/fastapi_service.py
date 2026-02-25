@@ -1,8 +1,9 @@
 from typing import List
 from pydantic import BaseModel
 from gemini import gen_summary_lock, get_formatted_summary
+from line_bot import global_lifespan
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+
 
 class NewsListItem(BaseModel):
     id: int
@@ -21,17 +22,11 @@ class CateSummary(BaseModel):
     category: str
     summary: str
 
+lifespan = global_lifespan()
+
 def create_web_app(db_instance, gemini_instance, redis_instance):
-
-    app = FastAPI()
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"], 
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    lifespan = global_lifespan(db_instance, gemini_instance, redis_instance)
+    app = FastAPI(lifespan=lifespan)
 
     @app.get("/api/news", response_model=List[NewsListItem])
     async def get_news_list():

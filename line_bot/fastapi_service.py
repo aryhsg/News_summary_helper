@@ -33,7 +33,8 @@ async def global_lifespan(db_instance, gemini_instance, redis_instance):
 
 
 def create_line_app(db_instance, gemini_instance, redis_instance):
-    app = FastAPI()
+    lifespan = global_lifespan(db_instance, gemini_instance, redis_instance)
+    app = FastAPI(lifespan=lifespan)
     line_forward = line_forward_rules(
         db_instance=db_instance, 
         gemini_instance=gemini_instance, 
