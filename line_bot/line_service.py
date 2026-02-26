@@ -40,11 +40,12 @@ class line_forward_rules:
 
                 k_word = d_body['events'][0]['message']['text']
 
-                result = await self.db.fetch_news_content(keyword= k_word)
-                if result:
-                    await self.__return_newslist(d_body=d_body, query_result=result)
-                else: 
-                    await self.text_message(d_body=d_body)
+                if k_word != "操作說明":
+                    result = await self.db.fetch_news_content(keyword= k_word)
+                    if result:
+                        await self.__return_newslist(d_body=d_body, query_result=result)
+                    else: 
+                        await self.text_message(d_body=d_body)
 
             if d_body['events'][0]['type'] == 'postback' and d_body['events'][0]['postback']['data'] in self.CATE_LIST:
                 cate = d_body['events'][0]['postback']['data']

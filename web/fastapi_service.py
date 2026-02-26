@@ -1,9 +1,10 @@
+import os
+import asyncio
 from typing import List
 from pydantic import BaseModel
 from gemini import gen_summary_lock, get_formatted_summary
-from line_bot import global_lifespan
 from fastapi import FastAPI, HTTPException
-
+from contextlib import asynccontextmanager
 
 class NewsListItem(BaseModel):
     id: int
@@ -22,11 +23,32 @@ class CateSummary(BaseModel):
     category: str
     summary: str
 
-lifespan = global_lifespan()
 
 def create_web_app(db_instance, gemini_instance, redis_instance):
-    lifespan = global_lifespan(db_instance, gemini_instance, redis_instance)
-    app = FastAPI(lifespan=lifespan)
+    
+    @asynccontextmanager
+    async def global_lifespan(app: FastAPI):
+
+        print(f"DEBUG: DB_HOST is {os.environ.get('HOST')}")
+        try:
+            # --- App 啟動時執行 ---
+            await db_instance.pool_init() 
+            await redis_instance.init_pool()
+            print("資料庫連線池與 Redis 連線池已開啟")
+            gemini = gemini_instance
+            print("Gemini API Client 已就緒")
+            yield 
+        finally:
+            # --- App 關閉時執行 ---
+            await gemini_instance.close()
+            print("Gemini API Client 已斷線")
+            await db_instance.pool_close()
+            await redis_instance.close()
+            print("資料庫連線池與 Redis 連線池已關閉")
+            await asyncio.sleep(0.1)
+
+
+    app = FastAPI(lifespan=global_lifespan)
 
     @app.get("/api/news", response_model=List[NewsListItem])
     async def get_news_list():
