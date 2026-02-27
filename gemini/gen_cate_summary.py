@@ -16,6 +16,9 @@ DB = db.NewsDB()
 ai = gemini_service()
 
 def get_str_summary(raw_summary: dict):
+    """
+    給LINE排版用
+    """
     # 從傳入的字典中取出 JSON 字串並解析
     raw_data = json.loads(raw_summary.get("news_summary", "{}"))
     
@@ -28,7 +31,7 @@ def get_str_summary(raw_summary: dict):
             analysis = item.get("analysis", "").strip()
             
             # 使用項目符號與分隔線增加視覺區隔
-            content += f"● 【{topic}】\n"
+            content += f"● 【{topic}】\n\n"
             content += f"   {analysis}\n\n"
             #content += f"{'-' * 40}\n" # 加入短分隔線
 
@@ -36,14 +39,39 @@ def get_str_summary(raw_summary: dict):
         report_title = raw_data.get('report_title', '今日新聞趨勢彙總')
         formatted_summary = f"=== {report_title} ===\n\n{content}" 
 
-        print(formatted_summary)
-        return formatted_summary
-    
+        return formatted_summary 
+
     except Exception as e:
         print(f"解析摘要時發生錯誤: {e}")
         return None
 
-async def generate_cate_summary(category: str):
+def get_formatted_summary(raw_summary: dict):
+    """
+    給網頁排版用
+    """
+    raw_data = json.loads(raw_summary.get("news_summary", "{}"))
+    # 1. 處理所有趨勢內容，將 topic 與 analysis 組合
+    trend_sections = []
+    for item in raw_data.get("core_trends", []):
+        topic = item.get("topic", "")
+        analysis = item.get("analysis", "")
+        # 使用 <h3> 和 <p> 進行簡單網頁排版
+        section = f"<br><h3>{topic}</h3>\n<br>\n<p style='text-align: justify;'>{analysis}</p>"
+        trend_sections.append(section)
+    
+    # 2. 取得主標題並用 <h2> 包起來
+    report_title = raw_data.get("report_title", "今日新聞摘要")
+    title_html = f"<h2>{report_title}</h2>\n<hr>"
+    
+    # 3. 將所有區塊組合成一個大字串，中間用換行隔開
+    all_content_html = "\n".join(trend_sections)
+    
+    # 最終輸出的 HTML 字串
+    final_html = f"{title_html}\n{all_content_html}"
+    
+    return final_html   
+
+async def generate_summary_n_store(category: str):
     news_list = []
     try:
         query_result = await DB.fetch_news_summary(category=category) # [{news_id, title, category, content}]
@@ -74,27 +102,22 @@ async def generate_cate_summary(category: str):
             await ai.close()
 
 
-async def main(category:str):
+async def main():
+    cate_list = ["要聞", "國際", "證券", "期貨", "產業", "金融"]
     await DB.pool_init()
     try:
         print("generating vategory summary...")
-        await generate_cate_summary(category=category)
+        for category in cate_list:
+            print(f"正在生成 {category} 類別摘要...")
+            await generate_summary_n_store(category=category)
+            print(f"{category} 類別摘要生成完成，暫停60秒後繼續下一類別...")
+            await asyncio.sleep(60) # 每生成一個類別摘要後暫停60秒，避免過度頻繁請求AI服務
+        print("所有類別摘要生成完成！")
     except Exception as e:
-        print(f"error: {e}")
+        print(f"gen cate summary error: {e}")
     finally:
         await DB.pool_close()
 
-async def test(cate: str):
-    await DB.pool_init()
-    try:
-        raw_summary = await DB.fetch_cate_summary(category= "兩岸")
-        print(type(raw_summary[0]['news_summary']))
-        get_str_summary(raw_summary=raw_summary[0])
-    except Exception as e:
-        print(f"error: {e}")
-    finally:
-        await DB.pool_close()
 
 if __name__ == "__main__":
-    #asyncio.run(main("兩岸"))
-    asyncio.run(test("兩岸"))
+    asyncio.run(main())

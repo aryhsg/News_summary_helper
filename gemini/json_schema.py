@@ -13,17 +13,6 @@ class NewsSummarySchema(BaseModel):
     
 # ----------------------------------------------------------------------------------------
 
-"""class InsightPoint(BaseModel):
-    topic: str = Field(..., description="核心主題或趨勢名稱（如：中東局勢升溫、季報獲利預警）。")
-    description: str = Field(..., description="詳細的分析邏輯，需整合具體事實與數據。")
-    source_ids: List[int] = Field(..., description="對應的新聞 ID 列表。")
-
-class CategorySummary(BaseModel):
-    digest_title: str = Field(..., description="為此彙總報告取一個具有專業新聞感的標題。")
-    brief_overview: str = Field(..., description="一句話總覽該類別目前的整體態勢（30-50字內）。")
-    insight_points: List[InsightPoint] = Field(..., description="分類的主題洞察清單。")
-    future_watch: str = Field(..., description="後續值得關注的關鍵節點、日期或潛在風險預測。")"""
-
 class NewsInsight(BaseModel):
     """代表從新聞群組中提取的單一核心趨勢洞察"""
     topic: str = Field(..., description="核心趨勢名稱，需簡潔且具備高度資訊密度")

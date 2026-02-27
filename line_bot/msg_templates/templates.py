@@ -30,24 +30,24 @@ class Single_News_Template(Templates): # 單篇新聞摘要模板
                                 "weight": "bold",
                                 "wrap": True,
                                 "margin": "none",
-                                "color": "#f2f7ff"
+                                "color": "#FF5722"
                             }
                         ],
                         "background": {
-                            "type": "linearGradient",
-                            "angle": "120deg",
-                            "endColor": "#10002b",
-                            "startColor": "#3c096c",
-                            "centerColor": "#10002b",
-                            "centerPosition": "40%"
-                        }
+                        "type": "linearGradient",
+                        "angle": "120deg",
+                        "startColor": "#26211E",
+                        "endColor": "#1c1816",
+                        "centerColor": "#10002b",
+                        "centerPosition": "60%"
+                      }
                     },
                     "body": {
                         "type": "box",
                         "layout": "vertical",
                         # 最終的內容會被填充到這裡
                         "contents": [],
-                        "backgroundColor": "#10002b"
+                        "backgroundColor": "#030100"
                     },
                     "footer": {
                         "type": "box",
@@ -71,9 +71,10 @@ class Single_News_Template(Templates): # 單篇新聞摘要模板
                         "background": {
                             "type": "linearGradient",
                             "angle": "90deg",
-                            "startColor": "#ff9100",
-                            "endColor": "#ff9e00",
-                            "centerColor": "#ff8500"
+                            "startColor": "#9E4A2F",
+                            "endColor": "#9E4A2F",
+                            "centerColor": "#FF5722",
+                            "centerPosition": "60%"
                         }
                     }
                 }
@@ -92,29 +93,22 @@ class Single_News_Template(Templates): # 單篇新聞摘要模板
                 "align": "start",
                 "weight": "bold",
                 "margin": "md",
-                "color": "#e7ecef",
+                "color": "#c9c7c7",
                 "offsetBottom": "sm",
                 "lineSpacing": "8px",
                 "size": "lg"
             }
         ],
-        "borderColor": "#023e7d",
-        "borderWidth": "0.7px",
+        "borderColor": "#9E4A2F",
+        "borderWidth": "0.9px",
         "cornerRadius": "sm",
         "margin": "md",
         "offsetBottom": "md",
         "paddingStart": "lg",
         "paddingEnd": "md",
-        "background": {
-            "type": "linearGradient",
-            "angle": "180deg",
-            "startColor": "#3d05dd",
-            "endColor": "#240046",
-            "centerColor": "#4f04a3",
-            "centerPosition": "50%"
-            }
+        "backgroundColor": "#26211E"
     }
-    def generate_flex_messages(self, msg, news_summary: str):
+    def generate_flex_messages(self, msg, news_summary: str, title: str):
         """
         根據新聞數據和分類，生成完整的 Flex Message JSON 結構。
         """
@@ -123,7 +117,7 @@ class Single_News_Template(Templates): # 單篇新聞摘要模板
 
         current_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
         current_temp["contents"][0]["text"] = news_summary
-        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣"
+        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"【 {title} 】"
         current_body["messages"][0]["contents"]["footer"]["contents"][0]["action"]["uri"] = msg["events"][0]["postback"]["data"]
         current_body["messages"][0]["contents"]["body"]["contents"].append(current_temp)
 
@@ -153,14 +147,14 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
                             "size": "lg",
                             "weight": "bold",
                             "margin": "none",
-                            "color": "#e7ecef"
+                            "color": "#FF5722"
                         }
                     ],
                      "background": {
                         "type": "linearGradient",
                         "angle": "120deg",
-                        "startColor": "#3c096c",
-                        "endColor": "#10002b",
+                        "startColor": "#26211E",
+                        "endColor": "#1c1816",
                         "centerColor": "#10002b",
                         "centerPosition": "40%"
                       }
@@ -170,7 +164,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
                     "layout": "vertical",
                     # 最終的內容會被填充到這裡
                     "contents": [],
-                    "backgroundColor": "#10002b"
+                    "backgroundColor": "#030100"
                 }
             }
         }
@@ -189,37 +183,31 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
             "align": "start",
             "weight": "bold",
             "margin": "md",
-            "color": "#f2f7ff",
+            "color": "#c9c7c7",
             "offsetBottom": "sm",
              "size": "md"
         }
     ],
-    "borderColor": "#D5C67A",
-    "borderWidth": "none",
+    "borderColor": "#9E4A2F",
+    "borderWidth": "0.9px",
     "cornerRadius": "sm",
     "flex": 1,
     "margin": "md",
     "paddingAll": "md",
     "spacing": "xs",
-    "background": {
-          "type": "linearGradient",
-          "angle": "135deg",
-          "startColor": "#3d05dd",
-          "endColor": "#240046",
-          "centerColor": "#4f04a3",
-          "centerPosition": "50%"
-        },
+    "backgroundColor": "#26211E",
     "paddingStart": "lg",
     "paddingEnd": "md"
 }
 
-    def generate_flex_messages(self, msg, cate_summary: str):
+    def generate_flex_messages(self, msg, cate_summary: str, cate: str):
         current_body = copy.deepcopy(self.msg_body)
         current_temp = copy.deepcopy(self.msg_temp)
 
         current_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
         current_temp["contents"][0]["text"] = cate_summary
-        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣"
+        current_body["messages"][0]["altText"] = f"【{cate}】類新聞摘要已經整理好囉"
+        current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣 【{cate}】 類摘要"
         current_body["messages"][0]["contents"]["body"]["contents"].append(current_temp)
 
         return current_body        
@@ -246,18 +234,18 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
                             "type": "text",
                             # 替換成實際的分類
                             "text": f"🗂️ 以下是類新聞列表", 
-                            "size": "lg",
+                            "size": "sm",
                             "weight": "bold",
                             "margin": "none",
-                            "color": "#e7ecef"
+                            "color": "#1c1816"
                         }
                     ],
                     "backgroundColor": "#ffba08",
                      "background": {
                         "type": "linearGradient",
                         "angle": "120deg",
-                        "startColor": "#3c096c",
-                        "endColor": "#10002b",
+                        "startColor": "#26211E",
+                        "endColor": "#1c1816",
                         "centerColor": "#10002b",
                         "centerPosition": "40%"
                       }
@@ -267,7 +255,7 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
                     "layout": "vertical",
                     # 最終的內容會被填充到這裡
                     "contents": [],
-                    "backgroundColor": "#10002b"
+                    "backgroundColor": "#030100"
                 }
             }
         }
@@ -285,20 +273,13 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
             "align": "start",
             "weight": "bold",
             "margin": "md",
-            "color": "#f2f7ff",
+            "color": "#c9c7c7",
             "offsetBottom": "sm",
             "size": "lg",
             
         }
     ],
-    "background": {
-        "type": "linearGradient",
-        "angle": "135deg",
-        "startColor": "#3d05dd",
-        "endColor": "#240046",
-        "centerColor": "#4f04a3",
-        "centerPosition": "25%"
-    },
+    "backgroundColor": "#332D29",
     "paddingStart": "lg",
     "paddingEnd": "md",
     "paddingBottom": "sm",
@@ -326,24 +307,31 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
                 "size": "lg",
                 "weight": "bold",
                 "margin": "none",
-                "color": "#e7ecef"
+                "color": "#c94402"
             }
         ],
-        "backgroundColor": "#ffba08",
         "background": {
             "type": "linearGradient",
             "angle": "120deg",
-            "startColor": "#3c096c",
-            "endColor": "#10002b",
+            "startColor": "#26211E",
+            "endColor": "#1c1816",
             "centerColor": "#10002b",
             "centerPosition": "40%"
-        }
+        },
+        
     },
     "body": {
         "type": "box",
         "layout": "vertical",
         "contents": [], # 新聞項目將會填充到這裡
-        "backgroundColor": "#10002b"
+        "background": {
+            "type": "linearGradient",
+            "angle": "135deg",
+            "startColor": "#26211E",
+            "endColor": "#1c1816",
+            "centerColor": "#10002b",
+            "centerPosition": "25%"
+        },
     }
 }
         
@@ -366,7 +354,7 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
             new_bubble = copy.deepcopy(self.base_bubble)
             
             # 更新 Header 標題
-            new_bubble["header"]["contents"][0]["text"] = f"📰 以下是【{category_name}】類新聞"
+            new_bubble["header"]["contents"][0]["text"] = f"                📰 【{category_name}新聞】"
 
             # 取得該副本的 body 列表
             body_contents_list = new_bubble["body"]["contents"]
@@ -407,7 +395,8 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
 class CateList_Template(Templates): # 類別列表模板
     def __init__(self):
         super().__init__()
-        self.cate_list = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
+        self.cate_list = ["要聞","國際","證券","期貨","產業","金融","理財","房市","兩岸","專欄","專題","商情"]
+        self.cate_list_for_summary = ["要聞","國際","證券","期貨","產業","金融"]
 
         self.msg_body = {
         "replyToken": f"",
@@ -429,15 +418,15 @@ class CateList_Template(Templates): # 類別列表模板
                                 "size": "md",
                                 "weight": "bold",
                                 "margin": "none",
-                                "color": "#e7ecef"
+                                "color": "#c9c7c7"
                             }
                         ],
                         "backgroundColor": "#ffba08",
                         "background": {
                             "type": "linearGradient",
                             "angle": "120deg",
-                            "startColor": "#3c096c",
-                            "endColor": "#10002b",
+                            "startColor": "#26211E",
+                            "endColor": "#1c1816",
                             "centerColor": "#10002b",
                             "centerPosition": "40%"
                         }
@@ -447,7 +436,14 @@ class CateList_Template(Templates): # 類別列表模板
                         "layout": "vertical",
                         # 最終的內容會被填充到這裡
                         "contents": [],
-                        "backgroundColor": "#10002b"
+                        "background": {
+                        "type": "linearGradient",
+                        "angle": "135deg",
+                        "startColor": "#26211E",
+                        "endColor": "#1c1816",
+                        "centerColor": "#10002b",
+                        "centerPosition": "25%"
+                        },
                     }
                 }
             }
@@ -465,19 +461,12 @@ class CateList_Template(Templates): # 類別列表模板
                 "align": "start",
                 "weight": "bold",
                 "margin": "md",
-                "color": "#f2f7ff",
+                "color": "#FF5722",
                 "size": "md"
                 
             }
         ],
-        "background": {
-            "type": "linearGradient",
-            "angle": "135deg",
-            "startColor": "#3d05dd",
-            "endColor": "#240046",
-            "centerColor": "#4f04a3",
-            "centerPosition": "25%"
-        },
+        "backgroundColor": "#332D29",
         "paddingStart": "md",
         "paddingBottom": "sm",
         "cornerRadius": "sm",
@@ -497,22 +486,33 @@ class CateList_Template(Templates): # 類別列表模板
         self.msg_body["messages"][0]["contents"]["body"]["contents"] = []
         body_contents_list = self.msg_body["messages"][0]["contents"]["body"]["contents"]
         
-        for cate in self.cate_list:
-            # 2. 使用 deepcopy 複製一個獨立的模板副本
-            temp_item = copy.deepcopy(self.msg_temp)
-            
-            # 3. 修改這個「副本」的內容
-            temp_item["contents"][0]["text"] = cate
-            
-            if msg['events'][0]["message"]["text"] == "請選擇感興趣類別":
+        if msg['events'][0]["message"]["text"] == "請選擇感興趣類別":
+            for cate in self.cate_list:
+                # 2. 使用 deepcopy 複製一個獨立的模板副本
+                temp_item = copy.deepcopy(self.msg_temp)
+                
+                # 3. 修改這個「副本」的內容
+                temp_item["contents"][0]["text"] = cate               
                 temp_item["action"]["data"] = cate
                 temp_item["action"]["displayText"] = f"正在載入【{cate}】新聞列表..."
-            else:
+        
+                # 4. 將副本添加到列表
+                body_contents_list.append(temp_item)
+        
+            return self.msg_body
+        
+        else:
+            for cate in self.cate_list_for_summary:
+                # 2. 使用 deepcopy 複製一個獨立的模板副本
+                temp_item = copy.deepcopy(self.msg_temp)
+                
+                # 3. 修改這個「副本」的內容
+                temp_item["contents"][0]["text"] = cate
                 temp_item["action"]["data"] = f"{cate}_摘要"
                 temp_item["action"]["label"] = f"{cate}類新聞" 
                 temp_item["action"]["displayText"] = f"正在生成【{cate}】新聞摘要..."
-            
-            # 4. 將副本添加到列表
-            body_contents_list.append(temp_item)
+                
+                # 4. 將副本添加到列表
+                body_contents_list.append(temp_item)
         
-        return self.msg_body
+            return self.msg_body

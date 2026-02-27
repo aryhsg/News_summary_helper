@@ -1,8 +1,10 @@
+import os
+import asyncio
 from typing import List
 from pydantic import BaseModel
-from gemini import gen_summary_lock
+from gemini import gen_summary_lock, get_formatted_summary
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 class NewsListItem(BaseModel):
     id: int
@@ -17,17 +19,36 @@ class NewsSummary(BaseModel):
     id: int
     summary: str
 
+class CateSummary(BaseModel):
+    category: str
+    summary: str
+
+
 def create_web_app(db_instance, gemini_instance, redis_instance):
+    
+    @asynccontextmanager
+    async def global_lifespan(app: FastAPI):
 
-    app = FastAPI()
+        print(f"DEBUG: DB_HOST is {os.environ.get('HOST')}")
+        try:
+            # --- App 啟動時執行 ---
+            await db_instance.pool_init() 
+            await redis_instance.init_pool()
+            print("資料庫連線池與 Redis 連線池已開啟")
+            gemini = gemini_instance
+            print("Gemini API Client 已就緒")
+            yield 
+        finally:
+            # --- App 關閉時執行 ---
+            await gemini_instance.close()
+            print("Gemini API Client 已斷線")
+            await db_instance.pool_close()
+            await redis_instance.close()
+            print("資料庫連線池與 Redis 連線池已關閉")
+            await asyncio.sleep(0.1)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"], 
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+
+    app = FastAPI(lifespan=global_lifespan)
 
     @app.get("/api/news", response_model=List[NewsListItem])
     async def get_news_list():
@@ -47,7 +68,7 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         newsdb = db_instance
         redis = redis_instance
         gemini = gemini_instance
-        summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
+        title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
         html_summary = gen_summary_lock.advanced_format_summary(summary)
         return {"id": news_id, "summary": html_summary}
 
@@ -57,4 +78,28 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         results = await newsdb.web_search_news(keyword=keyword)
         return results
     
+    @app.post("/api/news/summary/{category}", response_model=CateSummary)
+    async def get_cate_summary(category: str):
+        newsdb = db_instance
+        raw_summary = await newsdb.fetch_cate_summary(category= category)
+        if raw_summary: 
+
+            summary = get_formatted_summary(raw_summary=raw_summary[0])
+            return {"category": category, "summary": summary}
+        else:
+            return {"category": category, "summary": "該類別尚無摘要"}
+    
+
+    @app.get("/api/test/news", response_model=List[NewsListItem])
+    async def get_news_list():
+        news = await db_instance.test_web_fetch_news()
+        return news
+
+    @app.post("/api/test/news/{news_id}/summary", response_model=NewsSummary)
+    async def get_news_summary(news_id: str):
+        newsdb = db_instance
+        redis = redis_instance
+        title, summary = await gen_summary_lock.test_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
+        return {"id": news_id, "summary": summary}
+
     return app

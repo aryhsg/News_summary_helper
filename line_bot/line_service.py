@@ -21,58 +21,60 @@ class line_forward_rules:
         self.API_URL = "https://api.line.me/v2/bot/message/reply"
 
     async def forward_rule(self, d_body):
+        cleaned_text = ""
+        
     # 檢查是否有事件發生
         if d_body.get("events"):
-            if d_body['events'][0]['type'] == 'message' and d_body['events'][0]['message']['text'] == '請選擇感興趣類別':
+            
+            if d_body['events'][0]['type'] == 'message':
+
+                cleaned_text = d_body['events'][0]['message']['text'].replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
+                if cleaned_text == '請選擇感興趣類別' or cleaned_text == '選擇欲生成摘要的類別':
                 # 直接把資料傳給你的回覆函式
                 # 這裡會等待回覆完成才回傳 OK 給 LINE
                 
-                await self.__return_catelist(d_body)
-
-            
-            if d_body['events'][0]['type'] == 'message' and d_body['events'][0]['message']['text'] == '選擇欲生成摘要的類別':
-                # 類別摘要
-                
-                await self.__return_catelist(d_body)   
-
-            if d_body['events'][0]['type'] == 'message' and d_body['events'][0]['message']['text'] != '請選擇感興趣類別':
-                # 關鍵字查詢
-
-                k_word = d_body['events'][0]['message']['text']
-
-                result = await self.db.fetch_news_content(keyword= k_word)
-                if result:
-                    await self.__return_newslist(d_body=d_body, query_result=result)
-                else: 
-                    await self.text_message(d_body=d_body)
-
-            if d_body['events'][0]['type'] == 'postback' and d_body['events'][0]['postback']['data'] in self.CATE_LIST:
-                cate = d_body['events'][0]['postback']['data']
-
-                print(f"確認類別成功， 類別為： {cate}")
-
-                result = await self.db.fetch_cate_news(category=cate)
-                if result:
-                    await self.__return_newslist(d_body=d_body, query_result=result)
-                else: 
-                    await self.text_message(d_body=d_body, has_news=False)
+                    await self.__return_catelist(d_body)
 
 
-            if d_body['events'][0]['type'] == 'postback' and "_摘要" in d_body['events'][0]['postback']['data']:
-                cate = d_body['events'][0]['postback']['data'].split("_")[0]
+                elif cleaned_text != '請選擇感興趣類別' and cleaned_text != '選擇欲生成摘要的類別' and cleaned_text != "操作說明":
+                    # 關鍵字查詢
+                    result = await self.db.fetch_news_content(keyword= cleaned_text)
+                    if result:
+                        await self.__return_newslist(d_body=d_body, query_result=result)
+                    else: 
+                        await self.text_message(d_body=d_body)
 
-                print(f"確認類別成功， 類別為： {cate}")
+            if d_body['events'][0]['type'] == 'postback':
+                if d_body['events'][0]['postback']['data'] in self.CATE_LIST:
+                    cate = d_body['events'][0]['postback']['data']
+        
+                    print(f"確認類別成功， 類別為： {cate}")
 
-                result = await self.db.fetch_cate_summary(category= cate)
-                summary = get_str_summary(raw_summary=result[0])
+                    result = await self.db.fetch_cate_news(category=cate)
+                    if result:
+                        await self.__return_newslist(d_body=d_body, query_result=result)
+                    else: 
+                        await self.text_message(d_body=d_body, has_news=False)
 
-                await self.__return_cate_summary(d_body=d_body, cate_summary=summary)
 
-            if d_body['events'][0]['type'] == 'postback' and d_body['events'][0]['postback']['data'].startswith("http") :
-                url = d_body['events'][0]['postback']['data']
-                news_id = url.split("/")[-1].split("?")[0]
-                summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
-                await self.__return_news_summary(d_body=d_body, news_summary=summary)
+                elif "_摘要" in d_body['events'][0]['postback']['data']:
+                    cate = d_body['events'][0]['postback']['data'].split("_")[0]
+
+                    print(f"確認類別成功， 類別為： {cate}")
+
+                    result = await self.db.fetch_cate_summary(category= cate)
+                    if result:
+                        summary = get_str_summary(raw_summary=result[0])
+                        await self.__return_cate_summary(d_body=d_body, cate_summary=summary, category=cate)
+                    else:
+                        await self.text_message(d_body=d_body, has_cate_sum=False)
+
+                elif d_body['events'][0]['postback']['data'].startswith("http") :
+                    url = d_body['events'][0]['postback']['data']
+                    news_id = url.split("/")[-1].split("?")[0]
+                    title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
+                    await self.__return_news_summary(d_body=d_body, news_summary=summary, title=title)
 
 
     async def __return_catelist(self, d_body):
@@ -107,8 +109,8 @@ class line_forward_rules:
         print(f"回覆訊息內容: {response.text}")
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def __return_news_summary(self, d_body, news_summary: str):  
-        news = sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary)
+    async def __return_news_summary(self, d_body, news_summary: str, title: str):  
+        news = sing_news.generate_flex_messages(msg= d_body, news_summary= news_summary, title= title)
         header = {  
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
@@ -124,8 +126,8 @@ class line_forward_rules:
 
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def __return_cate_summary(self, d_body, cate_summary: str):  
-        news = cate_news.generate_flex_messages(msg= d_body, cate_summary= cate_summary)
+    async def __return_cate_summary(self, d_body, cate_summary: str, category: str):  
+        news = cate_news.generate_flex_messages(msg= d_body, cate_summary= cate_summary, cate= category)
         header = {  
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.environ.get('ChannelAccessToken')}"
@@ -140,7 +142,7 @@ class line_forward_rules:
         print(f"回覆訊息內容: {response.text}")
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def text_message(self, d_body, has_news: bool | None = None):
+    async def text_message(self, d_body, has_news: bool | None = None, has_cate_sum: bool | None = None):
 
         header = {  
             "Content-Type": "application/json",
@@ -156,8 +158,11 @@ class line_forward_rules:
                                     "size": "md"
                                 }
                    ]}
-        if not has_news:
+        if has_news == False:
             json_msg["messages"][0]["text"] = "此類別尚無新聞"
+
+        if has_cate_sum == False:
+            json_msg["messages"][0]["text"] = "類別摘要將於每日下午2點以及晚上7點產出，敬請期待！"
 
         async with httpx.AsyncClient() as client:
             try:
@@ -167,4 +172,5 @@ class line_forward_rules:
                 return
         print(f"回覆訊息狀態碼: {response.status_code}")
         print(f"回覆訊息內容: {response.text}")
+
 

@@ -10,30 +10,34 @@ from line_service import line_forward_rules
 
 
 # -------------------------------------------------------------------------------------------------------------------------------
-@asynccontextmanager
-async def global_lifespan(db_instance, gemini_instance, redis_instance):
 
-    print(f"DEBUG: DB_HOST is {os.environ.get('HOST')}")
-    try:
-        # --- App 啟動時執行 ---
-        await db_instance.pool_init() 
-        await redis_instance.init_pool()
-        print("資料庫連線池與 Redis 連線池已開啟")
-        gemini = gemini_instance
-        print("Gemini API Client 已就緒")
-        yield (db_instance, gemini, redis_instance)
-    finally:
-        # --- App 關閉時執行 ---
-        await gemini_instance.close()
-        print("Gemini API Client 已斷線")
-        await db_instance.pool_close()
-        await redis_instance.close()
-        print("資料庫連線池與 Redis 連線池已關閉")
-        await asyncio.sleep(0.1)
 
 
 def create_line_app(db_instance, gemini_instance, redis_instance):
-    app = FastAPI()
+    
+    @asynccontextmanager
+    async def global_lifespan(app: FastAPI):
+
+        print(f"DEBUG: DB_HOST is {os.environ.get('HOST')}")
+        try:
+            # --- App 啟動時執行 ---
+            await db_instance.pool_init() 
+            await redis_instance.init_pool()
+            print("資料庫連線池與 Redis 連線池已開啟")
+            gemini = gemini_instance
+            print("Gemini API Client 已就緒")
+            yield 
+        finally:
+            # --- App 關閉時執行 ---
+            await gemini_instance.close()
+            print("Gemini API Client 已斷線")
+            await db_instance.pool_close()
+            await redis_instance.close()
+            print("資料庫連線池與 Redis 連線池已關閉")
+            await asyncio.sleep(0.1)
+
+    
+    app = FastAPI(lifespan=global_lifespan)
     line_forward = line_forward_rules(
         db_instance=db_instance, 
         gemini_instance=gemini_instance, 
