@@ -132,7 +132,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
     "messages": [
         {
             "type": "flex",
-            "altText": f"123",
+            "altText": f"",
             "contents": {
                 "type": "bubble",
                 "size": "giga",
@@ -206,6 +206,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
 
         current_body["replyToken"] = f"{msg['events'][0]['replyToken']}"
         current_temp["contents"][0]["text"] = cate_summary
+        current_body["messages"][0]["altText"] = f"【{cate}】類新聞摘要已經整理好囉"
         current_body["messages"][0]["contents"]["header"]["contents"][0]["text"] = f"📣 【{cate}】 類摘要"
         current_body["messages"][0]["contents"]["body"]["contents"].append(current_temp)
 
@@ -394,7 +395,8 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
 class CateList_Template(Templates): # 類別列表模板
     def __init__(self):
         super().__init__()
-        self.cate_list = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
+        self.cate_list = ["要聞","國際","證券","期貨","產業","金融","理財","房市","兩岸","專欄","專題","商情"]
+        self.cate_list_for_summary = ["要聞","國際","證券","期貨","產業","金融"]
 
         self.msg_body = {
         "replyToken": f"",
@@ -484,22 +486,33 @@ class CateList_Template(Templates): # 類別列表模板
         self.msg_body["messages"][0]["contents"]["body"]["contents"] = []
         body_contents_list = self.msg_body["messages"][0]["contents"]["body"]["contents"]
         
-        for cate in self.cate_list:
-            # 2. 使用 deepcopy 複製一個獨立的模板副本
-            temp_item = copy.deepcopy(self.msg_temp)
-            
-            # 3. 修改這個「副本」的內容
-            temp_item["contents"][0]["text"] = cate
-            
-            if msg['events'][0]["message"]["text"] == "請選擇感興趣類別":
+        if msg['events'][0]["message"]["text"] == "請選擇感興趣類別":
+            for cate in self.cate_list:
+                # 2. 使用 deepcopy 複製一個獨立的模板副本
+                temp_item = copy.deepcopy(self.msg_temp)
+                
+                # 3. 修改這個「副本」的內容
+                temp_item["contents"][0]["text"] = cate               
                 temp_item["action"]["data"] = cate
                 temp_item["action"]["displayText"] = f"正在載入【{cate}】新聞列表..."
-            else:
+        
+                # 4. 將副本添加到列表
+                body_contents_list.append(temp_item)
+        
+            return self.msg_body
+        
+        else:
+            for cate in self.cate_list_for_summary:
+                # 2. 使用 deepcopy 複製一個獨立的模板副本
+                temp_item = copy.deepcopy(self.msg_temp)
+                
+                # 3. 修改這個「副本」的內容
+                temp_item["contents"][0]["text"] = cate
                 temp_item["action"]["data"] = f"{cate}_摘要"
                 temp_item["action"]["label"] = f"{cate}類新聞" 
                 temp_item["action"]["displayText"] = f"正在生成【{cate}】新聞摘要..."
-            
-            # 4. 將副本添加到列表
-            body_contents_list.append(temp_item)
+                
+                # 4. 將副本添加到列表
+                body_contents_list.append(temp_item)
         
-        return self.msg_body
+            return self.msg_body

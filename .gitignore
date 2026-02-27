@@ -209,3 +209,5 @@ __marimo__/
 
 infrastructure/news_database/postgres_data/
 infrastructure/news_database/redis_data/
+tests/
+logs/

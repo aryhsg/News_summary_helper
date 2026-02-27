@@ -318,3 +318,4 @@ class NewsDB:
                 except Exception as e:
                     print(f"讀取失敗: {e}") 
                     return []
+
