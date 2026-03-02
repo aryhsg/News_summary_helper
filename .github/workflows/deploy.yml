@@ -25,6 +25,17 @@ jobs:
         pip install pytest pytest-asyncio  # 確保測試工具已安裝
 
     - name: Run Tests
+      env:
+        ChannelAccessToken: ${{secrets.CHANNEL_ACCESS_TOKEN}}
+        GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
+        WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
+        REDIS_URL: ${{secrets.REDIS_URL}}
+        REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
+        USERNAME: ${{secrets.USERNAME}}
+        PASSWORD: ${{secrets.PASSWORD}}
+        DB_NAME: ${{secrets.DB_NAME}}
+        HOST: ${{secrets.HOST}}
+        PORT: ${{secrets.PORT}}
       run: |
         # 這裡會跑你剛剛從 .gitignore 解禁的 tests 資料夾
         # -v: 顯示詳細進度 (可以看到是哪兩個測試檔在跑)
