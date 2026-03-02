@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from web import fastapi_service
-from mockdata import *
+from tests.mockdata import *
 from infrastructure import NewsDB
 from gemini import gemini_service, gen_summary_lock, get_str_summary, get_formatted_summary
 from infrastructure import RedisManager

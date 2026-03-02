@@ -211,3 +211,8 @@ infrastructure/news_database/postgres_data/
 infrastructure/news_database/redis_data/
 #tests/
 logs/
+
+*.pem
+*.key
+id_ed25519*
+secrets.json
