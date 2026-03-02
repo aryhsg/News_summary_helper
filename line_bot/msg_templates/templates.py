@@ -217,6 +217,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
 class Cate_News_list_Template(Templates): # 新聞列表模板
     def __init__(self):
         super().__init__()
+        self.cate_list = ["要聞","國際","證券","期貨","產業","金融","理財","房市","兩岸","專欄","專題","商情"]
         self.msg_body = {
     "replyToken": f"",
     "messages": [
@@ -354,8 +355,10 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
             new_bubble = copy.deepcopy(self.base_bubble)
             
             # 更新 Header 標題
-            new_bubble["header"]["contents"][0]["text"] = f"                📰 【{category_name}新聞】"
-
+            if msg['events'][0]["type"] == "postback":
+                new_bubble["header"]["contents"][0]["text"] = f"📰 【{category_name}新聞】"
+            elif msg['events'][0]["type"] == "message":
+                new_bubble["header"]["contents"][0]["text"] = f"🔎 【{msg['events'][0]['message']['text']}】 之搜尋結果"
             # 取得該副本的 body 列表
             body_contents_list = new_bubble["body"]["contents"]
         
