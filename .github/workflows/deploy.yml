@@ -69,8 +69,8 @@ jobs:
           
           # 4. 重啟那 4 個進程 (Master + Worker x2)
           # 使用 sudo 確保有權限重啟 systemd 服務
-          echo ${{ secrets.SUDO_PASSWORD }} | sudo systemctl restart gunicorn-nsh-web.service
-          echo ${{ secrets.SUDO_PASSWORD }} | sudo systemctl restart gunicorn-nsh-line.service
+          sudo systemctl restart gunicorn-nsh-web.service
+          sudo systemctl restart gunicorn-nsh-line.service
           
           # 5. 驗證服務狀態
           systemctl is-active gunicorn-nsh-web.service
