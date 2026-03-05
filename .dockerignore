@@ -22,8 +22,11 @@ tests/
 *.log
 *.sqlite
 infrastructure/news_database      # 如果你的 DB 資料存在這，記得排除，不要包進程式 Image
-postgres_data/
-redis_data/
+infrastructure/news_database/postgres_data/
+
+infrastructure/news_database/redis_data/
+
+infrastructure/news_database/nginx/
 pytest.ini
 
 docker-compose.yml
