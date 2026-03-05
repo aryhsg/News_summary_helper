@@ -2,76 +2,68 @@ name: NSH CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   # 第一階段：測試
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python 3.13.5
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.13.5"
+      - name: Set up Python 3.13.5
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.5"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest pytest-asyncio  # 確保測試工具已安裝
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-asyncio  # 確保測試工具已安裝
 
-    - name: Run Tests
-      env:
-        ChannelAccessToken: ${{secrets.CHANNEL_ACCESS_TOKEN}}
-        GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
-        WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
-        REDIS_URL: ${{secrets.REDIS_URL}}
-        REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
-        USERNAME: ${{secrets.USERNAME}}
-        PASSWORD: ${{secrets.PASSWORD}}
-        DB_NAME: ${{secrets.DB_NAME}}
-        HOST: ${{secrets.HOST}}
-        PORT: ${{secrets.PORT}}
-      run: |
-        # 這裡會跑你剛剛從 .gitignore 解禁的 tests 資料夾
-        # -v: 顯示詳細進度 (可以看到是哪兩個測試檔在跑)
-        # -ra: 顯示最後的總結報告
-        pytest -v -ra
+      - name: Run Tests
+        env:
+          ChannelAccessToken: ${{secrets.CHANNEL_ACCESS_TOKEN}}
+          GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY}}
+          WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
+          REDIS_URL: ${{secrets.REDIS_URL}}
+          REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
+          USERNAME: ${{secrets.USERNAME}}
+          PASSWORD: ${{secrets.PASSWORD}}
+          DB_NAME: ${{secrets.DB_NAME}}
+          HOST: ${{secrets.HOST}}
+          PORT: ${{secrets.PORT}}
+        run: |
+          # 這裡會跑你剛剛從 .gitignore 解禁的 tests 資料夾
+          # -v: 顯示詳細進度 (可以看到是哪兩個測試檔在跑)
+          # -ra: 顯示最後的總結報告
+          pytest -v -ra
 
   # 第二階段：部署 (只有測試過關且推送到 main 才會執行)
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
-    - name: Deploy to Debian VPS via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # 1. 進入專案目錄
-          cd /home/aryhsg/News_summary_helper
-          
-          # 2. 強制重設 .gitignore 並拉取最新代碼
-          git checkout .gitignore
-          git pull origin main
-          
-          # 3. 更新虛擬環境中的套件
-          source .venv/bin/activate
-          pip install -r requirements.txt
-          
-          # 4. 重啟那 4 個進程 (Master + Worker x2)
-          # 使用 sudo 確保有權限重啟 systemd 服務
-          sudo systemctl restart gunicorn-nsh-web.service
-          sudo systemctl restart gunicorn-nsh-line.service
-          
-          # 5. 驗證服務狀態
-          systemctl is-active gunicorn-nsh-web.service
-          systemctl is-active gunicorn-nsh-line.service
+      - name: Deploy to Debian VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. 進入專案目錄
+            cd /home/aryhsg/News_summary_helper
+
+            # 2. 強制重設 .gitignore 並拉取最新代碼
+            git checkout .gitignore
+            git pull origin main
+
+            # 3. 使用 docker-compose 重建並啟動服務
+            docker compose up -d --build
+
+            docker image prune -f

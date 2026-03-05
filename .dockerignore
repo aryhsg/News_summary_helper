@@ -1,0 +1,30 @@
+# 1. 排除 Python 環境與快取 (必備)
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 2. 排除隱私資訊 (極度重要)
+.env
+*.pem
+*.key
+
+# 3. 排除版本控制與測試檔案
+.git/
+.github/
+.gitignore
+tests/
+.pytest_cache/
+
+# 4. 排除專案雜物與日誌
+*.log
+*.sqlite
+infrastructure/news_database      # 如果你的 DB 資料存在這，記得排除，不要包進程式 Image
+postgres_data/
+redis_data/
+pytest.ini
+
+docker-compose.yml
+Dockerfile

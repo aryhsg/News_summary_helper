@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 class RedisManager:
     def __init__(self):
         # 從環境變數讀取連線資訊，增加彈性
-        self.redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
+        self.redis_url = os.environ.get("REDIS_URL", "redis://redis:6379")
         self.redis_password = os.environ.get("REDIS_PASSWORD")
         self.pool = None
 
