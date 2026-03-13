@@ -1,7 +1,8 @@
 """
 每小時定時執行爬蟲，將爬取的新聞存入資料庫
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 from news_crawler import scrape_news
 import infrastructure.db as db
 import infrastructure.redis_manager as redis_manager
