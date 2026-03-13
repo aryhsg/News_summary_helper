@@ -1,14 +1,15 @@
+import os
 import requests
 #import infrastructure.db as db
 import asyncio
-from dotenv import load_dotenv
 
-load_dotenv()
 #DB = db.NewsDB()
-
+token = os.getenv("CRON_TOKEN")
+headers = {"X-CRON-TOKEN": token}
+#print(f"Using CRON_TOKEN: {token}")  # 確認是否成功讀取環境變數
 async def scrape_news():
     try:
-        response = await asyncio.to_thread(requests.get, "https://aryhsgsnewsapi.onrender.com/api/scrape-all-news/")
+        response = await asyncio.to_thread(requests.get, "https://aryhsgsnewsapi.onrender.com/api/scrape-all-news/", headers=headers)
         if response.status_code == 200:
             news_data = response.json() # 直接把回傳的 JSON 轉成 Python 字典
             processed_news = []
