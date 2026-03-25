@@ -3,11 +3,12 @@ import sys
 import json
 import asyncio
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header, HTTPException
 from contextlib import asynccontextmanager
 from fastapi.responses import PlainTextResponse
 from line_service import line_forward_rules
-
+from linebot.v3.webhook import WebhookHandler
+from linebot.v3.exceptions import InvalidSignatureError
 
 # -------------------------------------------------------------------------------------------------------------------------------
 
@@ -15,6 +16,8 @@ from line_service import line_forward_rules
 
 def create_line_app(db_instance, gemini_instance, redis_instance):
     
+    
+
     @asynccontextmanager
     async def global_lifespan(app: FastAPI):
 
@@ -43,13 +46,14 @@ def create_line_app(db_instance, gemini_instance, redis_instance):
         gemini_instance=gemini_instance, 
         redis_instance=redis_instance
         )
-
+    
+    handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
     if not WEBHOOK_URL:
         raise ValueError("FATAL: WEBHOOK_URL environment variable is not set!")
 
     @app.post("/callback")
-    async def line_webhook_forwarder(request: Request):
+    async def line_webhook_forwarder(request: Request, x_line_signature: str = Header(None)):
         
         print("--- 收到新的請求 ---")
         print(f"訪問域名 (Host): {request.headers.get('Host')}")
@@ -58,14 +62,19 @@ def create_line_app(db_instance, gemini_instance, redis_instance):
         print(f"通訊協定 (X-Forwarded-Proto): {request.headers.get('X-Forwarded-Proto')}")
         print("--------------------")
 
+        body = await request.body()
+
         try:
-            body = await request.body()
+            handler.handle(body.decode("utf-8"), x_line_signature)
             decoded_body = json.loads(body.decode('utf-8')) # 將 bytes 轉為字串
             print(f"收到來自 LINE 的訊息內容: {decoded_body}")
             await line_forward.forward_rule(d_body=decoded_body)
 
+        except InvalidSignatureError:
+            print("Invalid signature detected!")
+            raise HTTPException(status_code=400, detail="Invalid signature")
         except Exception as e:
-            print(f"error: {e}")
+            print(f"Error: {e}")
                     
         # 立即回覆給 LINE 伺服器 (必須是 200 OK，使用 PlainTextResponse 確保回應乾淨)
         return PlainTextResponse("OK", status_code=200)
