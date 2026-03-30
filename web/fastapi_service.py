@@ -3,8 +3,11 @@ import asyncio
 from typing import List
 from pydantic import BaseModel
 from gemini import gen_summary_lock, get_formatted_summary
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends, status
+from fastapi.security.api_key import APIKeyHeader
 from contextlib import asynccontextmanager
+
+
 
 class NewsListItem(BaseModel):
     id: int
@@ -25,6 +28,18 @@ class CateSummary(BaseModel):
 
 
 def create_web_app(db_instance, gemini_instance, redis_instance):
+
+    API_KEY = os.getenv("INTERNAL_API_KEY", "your_fallback_secret_key")
+    API_KEY_NAME = "X-API-KEY"
+    api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+    async def get_api_key(header_key: str = Security(api_key_header)):
+        if header_key == API_KEY:
+            return header_key
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Denied: Invalid Security Token"
+        )
     
     @asynccontextmanager
     async def global_lifespan(app: FastAPI):
@@ -51,20 +66,20 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
     app = FastAPI(lifespan=global_lifespan)
 
     @app.get("/api/news", response_model=List[NewsListItem])
-    async def get_news_list():
+    async def get_news_list(_ = Depends(get_api_key)):
         news = await db_instance.web_fetch_news()
         return news
 
 
     @app.get("/api/news/{news_id}", response_model=NewsDetail)
-    async def get_news_content(news_id: str):
+    async def get_news_content(news_id: str, _ = Depends(get_api_key)):
         contents = await db_instance.web_fetch_news_contents(news_id=news_id)
         if not contents:
             raise HTTPException(status_code=404, detail="News not found")
         return contents[0]
 
     @app.post("/api/news/{news_id}/summary", response_model=NewsSummary)
-    async def get_news_summary(news_id: str):
+    async def get_news_summary(news_id: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         redis = redis_instance
         gemini = gemini_instance
@@ -73,13 +88,13 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         return {"id": news_id, "summary": html_summary}
 
     @app.get("/api/news/search?q={keyword}", response_model=List[NewsListItem])
-    async def search_news(keyword: str):
+    async def search_news(keyword: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         results = await newsdb.web_search_news(keyword=keyword)
         return results
     
     @app.post("/api/news/summary/{category}", response_model=CateSummary)
-    async def get_cate_summary(category: str):
+    async def get_cate_summary(category: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         raw_summary = await newsdb.fetch_cate_summary(category= category)
         if raw_summary: 
