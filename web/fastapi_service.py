@@ -34,8 +34,16 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
     api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
     async def get_api_key(header_key: str = Security(api_key_header)):
+        # 強制將訊息刷出到標準輸出 (stdout)
+        print(f"--- [DEBUG START] ---", flush=True)
+        print(f"1. Nginx 傳來的 Header 值: '{header_key}'", flush=True)
+        print(f"2. FastAPI 讀到的正確答案: '{API_KEY}'", flush=True)
+    
         if header_key == API_KEY:
+            print(f"--- [DEBUG] 驗證成功 ---", flush=True)
             return header_key
+    
+        print(f"--- [DEBUG] 驗證失敗：兩者不匹配 ---", flush=True)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access Denied: Invalid Security Token"
