@@ -16,6 +16,7 @@ db_instance = NewsDB()
 gemini_instance = gemini_service()
 redis_instance = RedisManager()
 test_api_key = os.getenv("INTERNAL_API_KEY", "your_test_key")
+print(test_api_key)
 headers = {"X-API-KEY": test_api_key}
 web_app = create_web_app(db_instance=db_instance, gemini_instance=gemini_instance, redis_instance=redis_instance)
 
