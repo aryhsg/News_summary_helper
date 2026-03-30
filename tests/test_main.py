@@ -1,3 +1,4 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock
@@ -14,7 +15,8 @@ from web.fastapi_service import create_web_app
 db_instance = NewsDB()
 gemini_instance = gemini_service()
 redis_instance = RedisManager()
-
+test_api_key = os.getenv("INTERNAL_API_KEY", "your_test_key")
+headers = {"X-API-KEY": test_api_key}
 web_app = create_web_app(db_instance=db_instance, gemini_instance=gemini_instance, redis_instance=redis_instance)
 
 client = TestClient(web_app)
@@ -31,7 +33,7 @@ async def test_get_news_success(monkeypatch):
     monkeypatch.setattr(db_instance, "web_fetch_news", mock_fetch)
 
     # 3. 使用 TestClient 發送 GET 請求到 /api/news 路徑
-    response = client.get("/api/news")
+    response = client.get("/api/news", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功
     assert response.status_code == 200
@@ -51,7 +53,7 @@ async def test_get_news_empty(monkeypatch):
     monkeypatch.setattr(db_instance, "web_fetch_news", mock_fetch)
 
     # 3. 發送 GET 請求到 /api/news 路徑
-    response = client.get("/api/news")
+    response = client.get("/api/news", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功
     assert response.status_code == 200
@@ -71,7 +73,7 @@ async def test_get_news_content_success(monkeypatch):
     monkeypatch.setattr(db_instance, "web_fetch_news_contents", mock_fetch)
 
     # 3. 發送 GET 請求到 /api/news/12345 路徑，這裡的 12345 是我們模擬資料中的新聞 ID
-    response = client.get("/api/news/12345")
+    response = client.get("/api/news/12345", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功
     assert response.status_code == 200
@@ -91,7 +93,7 @@ async def test_get_news_content_not_found(monkeypatch):
     monkeypatch.setattr(db_instance, "web_fetch_news_contents", mock_fetch)
 
     # 3. 發送 GET 請求到 /api/news/99999 路徑，這裡的 99999 是一個不存在的新聞 ID
-    response = client.get("/api/news/99999")
+    response = client.get("/api/news/99999", headers=headers)
 
     # 4. 驗證回應的狀態碼是 404，表示找不到資源
     assert response.status_code == 404
@@ -111,7 +113,7 @@ async def test_get_news_summary_success(monkeypatch):
     monkeypatch.setattr(gen_summary_lock, "generate_summary_with_lock", mock_fetch)
 
     # 3. 發送 POST 請求到 /api/news/12345/summary 路徑，這裡的 12345 是我們模擬資料中的新聞 ID
-    response = client.post("/api/news/12345/summary")
+    response = client.post("/api/news/12345/summary", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功
     assert response.status_code == 200
@@ -135,7 +137,7 @@ async def test_get_news_summary_not_found(monkeypatch):
     monkeypatch.setattr(gen_summary_lock, "generate_summary_with_lock", mock_fetch)
     monkeypatch.setattr(gen_summary_lock, "advanced_format_summary", mock_format)
     # 3. 發送 POST 請求到 /api/news/99999/summary 路徑，這裡的 99999 是一個不存在的新聞 ID
-    response = client.post("/api/news/99999/summary")
+    response = client.post("/api/news/99999/summary", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功（即使沒有摘要也不會報錯）
     assert response.status_code == 200
@@ -158,7 +160,7 @@ async def test_get_category_summary_success(monkeypatch):
     monkeypatch.setattr(db_instance, "fetch_cate_summary", mock_fetch)
     monkeypatch.setattr(target=fastapi_service, name="get_formatted_summary", value=mock_format)
     # 3. 發送 POST 請求到 /api/news/summary/要聞 路徑，這裡的 "要聞" 是我們模擬資料中的類別
-    response = client.post("/api/news/summary/要聞")
+    response = client.post("/api/news/summary/要聞", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功
     assert response.status_code == 200
@@ -182,7 +184,7 @@ async def test_get_category_summary_not_found(monkeypatch):
     monkeypatch.setattr(db_instance, "fetch_cate_summary", mock_fetch)
     monkeypatch.setattr(target=fastapi_service, name="get_formatted_summary", value=mock_format)
     # 3. 發送 POST 請求到 /api/news/summary/不存在 路徑，這裡的 "不存在" 是一個不存在的類別
-    response = client.post("/api/news/summary/不存在")
+    response = client.post("/api/news/summary/不存在", headers=headers)
 
     # 4. 驗證回應的狀態碼是 200，表示成功（即使沒有摘要也不會報錯）
     assert response.status_code == 200
