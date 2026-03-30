@@ -15,13 +15,13 @@ from web.fastapi_service import create_web_app
 db_instance = NewsDB()
 gemini_instance = gemini_service()
 redis_instance = RedisManager()
-
+os.environ["INTERNAL_API_KEY"] = "nsh_test_fake_key_123"
+headers = {"X-API-KEY": "nsh_test_fake_key_123"}
 web_app = create_web_app(db_instance=db_instance, gemini_instance=gemini_instance, redis_instance=redis_instance)
 
 client = TestClient(web_app)
 
-os.environ["INTERNAL_API_KEY"] = "nsh_test_fake_key_123"
-headers = {"X-API-KEY": "nsh_test_fake_key_123"}
+
 
 @pytest.mark.asyncio
 async def test_get_news_success(monkeypatch):

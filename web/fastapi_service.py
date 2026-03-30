@@ -106,12 +106,12 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
     
 
     @app.get("/api/test/news", response_model=List[NewsListItem])
-    async def get_news_list():
+    async def get_news_list(_ = Depends(get_api_key)):
         news = await db_instance.test_web_fetch_news()
         return news
 
     @app.post("/api/test/news/{news_id}/summary", response_model=NewsSummary)
-    async def get_news_summary(news_id: str):
+    async def get_news_summary(news_id: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         redis = redis_instance
         title, summary = await gen_summary_lock.test_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
