@@ -4,7 +4,9 @@ import asyncio
 import textwrap
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError, ServerError
 from gemini.json_schema import NewsSummarySchema, CategorySummary
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from dotenv import load_dotenv
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
@@ -122,6 +124,28 @@ class gemini_service:
         return "\n".join(response)
 
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=10),
+        retry=retry_if_exception_type((
+            ServerError,     # 對應 500, 503, 504 等伺服器端錯誤
+            # ClientError 包含 429 (配額滿) 和 408 (超時)
+            # 但要注意 ClientError 也包含 400 (語法錯)，語法錯通常不需要重試
+        )),
+        reraise=True
+    )
+    async def _do_generate_content(self, model, contents, config):
+        response = await self.client.models.generate_content(
+            model=model, 
+            contents=contents, 
+            config=config
+        )
+        #data = json.loads(response.text)
+        #data = self._format_data(data)
+
+        #return data
+        return response
+
     async def generate_summary(self, instruction_type, contents):
         if instruction_type == "sg":
             system_instruction = self.sg_system_instruction
@@ -153,16 +177,22 @@ class gemini_service:
             system_instruction=system_instruction
         )
 
-        response = await self.client.models.generate_content(
+        response = await self._do_generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=contents,
+            config=config
+        )
+        return response.text
+        """response = await self.client.models.generate_content(
             model="gemini-2.5-flash-lite", 
             contents=contents, 
             config=config
-        )
+        )"""
         #data = json.loads(response.text)
         #data = self._format_data(data)
 
         #return data
-        return response.text
+        #return response.text
 
     async def close(self):
         """手動關閉連線池，避免資源洩漏"""
