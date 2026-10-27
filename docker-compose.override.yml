@@ -1,0 +1,24 @@
+# 本機開發用的 compose 覆寫檔。
+# docker-compose.yml 裡 db/redis 的 volume 路徑是寫死的 VPS 絕對路徑
+# （/home/aryhsg/News_summary_helper/...），本機用 named volume 取代，
+# 避免處理 Windows 路徑問題。只啟動 db/redis，web/line/nginx 開發時用
+# `uvicorn --reload` 直接跑更方便，不透過 compose。
+#
+# 用法：docker compose up db redis -d
+services:
+  db:
+    volumes:
+      - nsh_postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "5432:5432"
+
+  redis:
+    volumes:
+      - nsh_redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  nsh_postgres_data:
+  nsh_redis_data:
