@@ -54,12 +54,15 @@ async def generate_summary_with_lock(news_id: int, db_instance, redis_instance, 
         result = await gemini_instance.generate_summary(instruction_type = "sg", contents = contents) # 預計會follow NewsSummarySchema
         result = json.loads(result)
         print(result)
-        summary = result[0].get("points", [])
+        # NewsSummarySchema 本身就是單篇文章的單一物件（不是 list），
+        # 不需要（也不能）用 [0] 去索引；points 裡每個元素是 SinglePoint
+        # ({point_id, content})，要取 content 欄位，不是整個物件直接印出來。
+        summary = result.get("points", [])
         summary_str = ""
         for i, p in enumerate(summary):
-            summary_str += f"{i+1}. {p}\n"
+            summary_str += f"{i+1}. {p.get('content', '')}\n"
 
-        await db_instance.insert_news_summary([(result[0].get("news_id", ""), summary_str, category)])
+        await db_instance.insert_news_summary([(result.get("news_id", ""), summary_str, category)])
         print("摘要成功存入資料庫")
         return title, summary_str
 

@@ -49,8 +49,9 @@ async def batch_gen_sum_n_store(category: str, DB_instance, gemini_instance, red
             news_summary_list = []
             for news in current_batch_summaries:
                 points = news.get("points", [])
-                # 使用 join 處理 list 比 += 效能更好
-                points_str = "\n".join([f"{i+1}. {p}" for i, p in enumerate(points)])
+                # points 裡每個元素是 SinglePoint ({point_id, content})，
+                # 要取 content 欄位，不是把整個物件直接印出來。
+                points_str = "\n".join([f"{i+1}. {p.get('content', '')}" for i, p in enumerate(points)])
 
                 news_tuple = (news.get("news_id", ""), points_str, category)
                 news_summary_list.append(news_tuple)
