@@ -5,6 +5,7 @@ import textwrap
 from google import genai
 from google.genai import types
 from google.genai.errors import ClientError, ServerError
+from pydantic import TypeAdapter
 from gemini.json_schema import NewsSummarySchema, CategorySummary
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from dotenv import load_dotenv
@@ -157,8 +158,13 @@ class gemini_service:
         elif instruction_type == "batch":
             system_instruction = self.batch_system_instruction
             max_output_tokens = 10000
-            mime_type = "application/json" 
-            response_schema=NewsSummarySchema.model_json_schema()
+            mime_type = "application/json"
+            # batch 模式一次處理多篇新聞，消費端（gen_sig_summary.py）預期拿到
+            # 一個 list，所以 schema 要用陣列包起來，不能直接沿用 "sg" 的單物件 schema。
+            # 用 TypeAdapter 讓 Pydantic 把巢狀的 SinglePoint 正確疊到頂層 $defs，
+            # 直接手動包 {"type":"array","items": NewsSummarySchema.model_json_schema()}
+            # 會讓 $defs 卡在 items 裡面那一層，SDK 解析 $ref 時會找不到定義而噴錯。
+            response_schema=TypeAdapter(list[NewsSummarySchema]).json_schema()
 
         elif instruction_type == "cate":
             system_instruction = self.cate_system_instruction
