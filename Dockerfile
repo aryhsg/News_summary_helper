@@ -23,4 +23,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--workers", "1", "worker-class", "uvicorn.workers.UnicornWorker", "--bind", "0.0.0.0:8000", "main_apps:web_app"]
+CMD ["gunicorn", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "main_apps:web_app"]

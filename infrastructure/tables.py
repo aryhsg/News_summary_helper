@@ -1,4 +1,8 @@
-from db import NewsDB
+# 這份 DDL 可能已經過時（缺少 news 表、single_news_summary/cate_news_summary
+# 實際用到的 category 欄位也沒列進來），目前權威的 schema 來源是
+# infrastructure/schema.sql（Stage -1 產出，掛載給本機 Postgres 容器用）。
+# 這支腳本保留僅供參考，建立表格前請先跟真實 Postgres schema 核對。
+from infrastructure.db import NewsDB
 import asyncio
 
 single_query = """

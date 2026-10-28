@@ -1,16 +1,10 @@
 import os
-import json 
-import asyncio
-import textwrap
 from google import genai
 from google.genai import types
 from google.genai.errors import ClientError, ServerError
 from pydantic import TypeAdapter
 from gemini.json_schema import NewsSummarySchema, CategorySummary
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from dotenv import load_dotenv
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path)
 
 class gemini_service:
     def __init__(self):
@@ -81,32 +75,6 @@ class gemini_service:
             }
             """
 
-    def _format_data(self, data: list):
-        response = []
-        # 設定內容縮進的寬度（例如 4 個半形空格，剛好對齊 "1. " 之後的文字）
-        width = 60  # 每行最大字數
-        indent_space = "    " 
-        
-        for i, content in enumerate(data):
-            point_text = content.get("point", "")
-            prefix = f"{i+1}. "
-            
-            # 使用 wrap 處理換行，這會回傳一個文字列表
-            # initial_indent: 第一行的縮進 (即標號)
-            # subsequent_indent: 之後每一行的縮進 (即空白)
-            wrapped_text = textwrap.fill(
-                point_text, 
-                width=width, 
-                initial_indent=prefix, 
-                subsequent_indent=" " * len(prefix)
-            )
-            
-            response.append(wrapped_text)
-        
-        # 用兩個換行符號分隔每一點，閱讀起來更舒適
-        return "\n".join(response)
-
-
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=10),
@@ -123,10 +91,6 @@ class gemini_service:
             contents=contents, 
             config=config
         )
-        #data = json.loads(response.text)
-        #data = self._format_data(data)
-
-        #return data
         return response
 
     async def generate_summary(self, instruction_type, contents):
@@ -172,37 +136,7 @@ class gemini_service:
             config=config
         )
         return response.text
-        """response = await self.client.models.generate_content(
-            model="gemini-2.5-flash-lite", 
-            contents=contents, 
-            config=config
-        )"""
-        #data = json.loads(response.text)
-        #data = self._format_data(data)
-
-        #return data
-        #return response.text
 
     async def close(self):
         """手動關閉連線池，避免資源洩漏"""
         await self.client.aclose()
-
-
-
-    
-        
-            
-
-
-
-# 測試用範例
-async def main(contents: list):
-    client = gemini_client()
-    result = await client.generate_summary("batch", contents)
-    #result = client._format_data(result)
-    print(type(result))
-    print(result)
-
-if __name__ == "__main__":
-    news_json_str = json.dumps(contents, ensure_ascii=False)
-    asyncio.run(main(contents=news_json_str))
