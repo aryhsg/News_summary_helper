@@ -2,6 +2,7 @@ import httpx
 import os
 import json
 
+from constants import ALL_CATEGORIES
 from gemini import gen_summary_lock, get_str_summary
 from line_bot.msg_templates import templates
 cate_news_list = templates.Cate_News_list_Template()
@@ -17,7 +18,7 @@ class line_forward_rules:
         self.db = db_instance
         self.gemini = gemini_instance
         self.redis = redis_instance
-        self.CATE_LIST = ["要聞","國際","證券","期貨","理財","房市","兩岸","金融","專欄","專題","商情","產業"]
+        self.CATE_LIST = ALL_CATEGORIES
         self.API_URL = "https://api.line.me/v2/bot/message/reply"
 
     async def forward_rule(self, d_body):

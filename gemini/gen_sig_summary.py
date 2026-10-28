@@ -1,6 +1,8 @@
 import json
 import asyncio
 
+from constants import BATCH_SUMMARY_CATEGORIES
+
 async def batch_gen_sum_n_store(category: str, DB_instance, gemini_instance, redis_manager_instance): 
     # 這裡只取清單，不存摘要結果
     try:
@@ -73,7 +75,7 @@ async def batch_gen_sum_n_store(category: str, DB_instance, gemini_instance, red
 
 
 async def batch_gen_all_sum_n_store(db, gemini, redis):
-    catelist = ["要聞","國際","證券","期貨","理財","兩岸","金融","產業"]
+    catelist = BATCH_SUMMARY_CATEGORIES
     all_results = []
     try:
         for cate in catelist:

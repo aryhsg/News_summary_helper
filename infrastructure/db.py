@@ -2,6 +2,8 @@ import os
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
 
+from constants import SANDBOX_CATEGORIES
+
 # truncate_table 只允許清空這幾張已知的表，避免 f-string 直接接使用者輸入的資料表名稱。
 _TRUNCATABLE_TABLES = {"news", "single_news_summary", "cate_news_summary"}
 
@@ -297,14 +299,14 @@ class NewsDB:
                 select_query = '''
                             SELECT news_id AS id, title AS title, category AS category, article_image AS img
                             FROM news
-                            WHERE category in ('要聞', '國際', '證券', '期貨', '產業', '金融', '理財')
+                            WHERE category = ANY(%s)
                             '''
                 try:
-                    await cursor.execute(select_query)
+                    await cursor.execute(select_query, (SANDBOX_CATEGORIES,))
                     result = await cursor.fetchall()
                     return result
                 except Exception as e:
-                    print(f"讀取失敗: {e}") 
+                    print(f"讀取失敗: {e}")
                     return []
 
 

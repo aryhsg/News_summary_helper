@@ -18,6 +18,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
+from constants import CATE_SUMMARY_CATEGORIES
 from infrastructure import db
 from gemini import gemini_service
 
@@ -121,7 +122,7 @@ async def generate_summary_n_store(category: str):
 
 
 async def main():
-    cate_list = ["要聞", "國際", "證券", "期貨", "產業", "金融"]
+    cate_list = CATE_SUMMARY_CATEGORIES
     await DB.pool_init()
     try:
         print("generating vategory summary...")
