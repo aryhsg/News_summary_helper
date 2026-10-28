@@ -1,5 +1,7 @@
 import copy
 
+from constants import ALL_CATEGORIES, CATE_SUMMARY_CATEGORIES
+
 class Templates:
     def __init__(self):
         self.msg_body = ""
@@ -217,7 +219,7 @@ class Cate_News_Summary_Template(Templates): # 類別新聞摘要模板
 class Cate_News_list_Template(Templates): # 新聞列表模板
     def __init__(self):
         super().__init__()
-        self.cate_list = ["要聞","國際","證券","期貨","產業","金融","理財","房市","兩岸","專欄","專題","商情"]
+        self.cate_list = ALL_CATEGORIES
         self.msg_body = {
     "replyToken": f"",
     "messages": [
@@ -398,8 +400,8 @@ class Cate_News_list_Template(Templates): # 新聞列表模板
 class CateList_Template(Templates): # 類別列表模板
     def __init__(self):
         super().__init__()
-        self.cate_list = ["要聞","國際","證券","期貨","產業","金融","理財","房市","兩岸","專欄","專題","商情"]
-        self.cate_list_for_summary = ["要聞","國際","證券","期貨","產業","金融"]
+        self.cate_list = ALL_CATEGORIES
+        self.cate_list_for_summary = CATE_SUMMARY_CATEGORIES
 
         self.msg_body = {
         "replyToken": f"",
