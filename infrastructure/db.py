@@ -1,7 +1,9 @@
 import os
-from unicodedata import category
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
+
+# truncate_table 只允許清空這幾張已知的表，避免 f-string 直接接使用者輸入的資料表名稱。
+_TRUNCATABLE_TABLES = {"news", "single_news_summary", "cate_news_summary"}
 
 class NewsDB:
     def __init__(self):
@@ -273,6 +275,9 @@ class NewsDB:
                     return []
 
     async def truncate_table(self, table: str):
+        if table not in _TRUNCATABLE_TABLES:
+            print(f"Refused to truncate unknown table: {table}")
+            return
         async with self.pool.connection() as connection:
             async with connection.cursor() as cursor:
                 query = f"""

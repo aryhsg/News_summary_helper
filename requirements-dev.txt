@@ -1,0 +1,5 @@
+# 開發/負載測試用，不會進生產環境的 Docker image。
+# locust 自己的網頁儀表板需要 Flask/gevent 一整串依賴，交給 pip 在安裝
+# 這份檔案時自己解析，不在 requirements.txt 裡手動列出。
+-r requirements.txt
+locust==2.43.3
