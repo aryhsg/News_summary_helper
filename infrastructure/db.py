@@ -1,7 +1,7 @@
-import os
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
 
+import config
 from constants import SANDBOX_CATEGORIES
 
 # truncate_table 只允許清空這幾張已知的表，避免 f-string 直接接使用者輸入的資料表名稱。
@@ -9,11 +9,11 @@ _TRUNCATABLE_TABLES = {"news", "single_news_summary", "cate_news_summary"}
 
 class NewsDB:
     def __init__(self):
-        self.username = os.getenv('USERNAME')
-        self.password = os.getenv('PASSWORD')
-        self.host = os.getenv('HOST')
-        self.port = os.getenv('PORT')
-        self.db_name = os.getenv('DB_NAME')
+        self.username = config.DB_USERNAME
+        self.password = config.DB_PASSWORD
+        self.host = config.DB_HOST
+        self.port = config.DB_PORT
+        self.db_name = config.DB_NAME
         self.conninfo = f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         self.pool = AsyncConnectionPool(conninfo=self.conninfo, min_size=2, max_size=10, open=False)
 

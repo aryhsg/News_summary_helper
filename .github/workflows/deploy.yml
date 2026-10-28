@@ -31,8 +31,12 @@ jobs:
           WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
           REDIS_URL: ${{secrets.REDIS_URL}}
           REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
-          USERNAME: ${{secrets.USERNAME}}
-          PASSWORD: ${{secrets.PASSWORD}}
+          # Secret 名稱沿用 USERNAME/PASSWORD，不需要去 GitHub 改名；
+          # 只是注入給測試步驟的環境變數名稱換成 DB_USERNAME/DB_PASSWORD，
+          # 跟 config.py 讀取的名稱對齊（Stage 1：根除跟 Windows 系統
+          # 環境變數 USERNAME 撞名的問題）。
+          DB_USERNAME: ${{secrets.USERNAME}}
+          DB_PASSWORD: ${{secrets.PASSWORD}}
           DB_NAME: ${{secrets.DB_NAME}}
           HOST: ${{secrets.HOST}}
           PORT: ${{secrets.PORT}}
