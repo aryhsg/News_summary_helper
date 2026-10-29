@@ -1,13 +1,28 @@
+import logging
+
 from psycopg_pool import AsyncConnectionPool
-from psycopg.rows import dict_row
 
 import config
-from constants import SANDBOX_CATEGORIES
+from infrastructure.exceptions import DatabaseError
+from infrastructure.repositories import (
+    NewsRepository,
+    SingleSummaryRepository,
+    CateSummaryRepository,
+)
+
+logger = logging.getLogger(__name__)
 
 # truncate_table 只允許清空這幾張已知的表，避免 f-string 直接接使用者輸入的資料表名稱。
 _TRUNCATABLE_TABLES = {"news", "single_news_summary", "cate_news_summary"}
 
+
 class NewsDB:
+    """資料庫存取的 facade：持有連線池生命週期，並把實際的讀寫委派給
+    三個依資料表拆分的 repository（NewsRepository/SingleSummaryRepository/
+    CateSummaryRepository）。對外的方法名稱、簽名都維持跟拆分前一致，
+    main_apps.py、line_service.py、web/fastapi_service.py、gen_*.py、
+    scrape_n_store.py、daily_truncate_tables.py 不需要跟著改。"""
+
     def __init__(self):
         self.username = config.DB_USERNAME
         self.password = config.DB_PASSWORD
@@ -16,6 +31,10 @@ class NewsDB:
         self.db_name = config.DB_NAME
         self.conninfo = f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         self.pool = AsyncConnectionPool(conninfo=self.conninfo, min_size=2, max_size=10, open=False)
+
+        self._news = NewsRepository(self.pool)
+        self._single_summaries = SingleSummaryRepository(self.pool)
+        self._cate_summaries = CateSummaryRepository(self.pool)
 
     async def pool_init(self):
         await self.pool.open()
@@ -26,255 +45,13 @@ class NewsDB:
     async def create_table(self, query: str):
         async with self.pool.connection() as connection:
             async with connection.cursor() as cursor:
-
                 try:
                     await cursor.execute(query)
                     await connection.commit()
                     print("Table created successfully!")
                 except Exception as e:
-                    print(f"Error creating table: {e}")
-
-        
-
-    async def insert_news(self,news_list):
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                insert_query = '''
-                    INSERT INTO news (news_id, category, title, content, url, article_image, keywords)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (news_id) DO NOTHING
-                    '''
-                try:
-                    await cursor.executemany(insert_query, news_list)
-                    await connection.commit()
-                    print(f"成功處理 {len(news_list)} 筆新聞")
-                except Exception as e:
-                    print(f"寫入失敗: {e}")
-
-    async def insert_cate_summary(self, category, cate_summary_tuple):
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                insert_query = '''
-                    INSERT INTO cate_news_summary (category, news_summary)
-                    VALUES (%s, %s)
-                    ON CONFLICT (category) DO UPDATE SET news_summary = EXCLUDED.news_summary
-                    '''
-                try:
-                    await cursor.execute(insert_query, cate_summary_tuple)
-                    await connection.commit()
-                    print(f"成功寫入 {category} 類摘要")
-                except Exception as e:
-                    print(f"寫入失敗: {e}")       
-
-    async def insert_news_summary(self,news_summary_list):
-        async with self.pool.connection() as connection:
-            async with connection.cursor() as cursor:
-                insert_query = '''
-                    INSERT INTO single_news_summary (news_id, news_summary, category)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (news_id) DO NOTHING
-                    '''
-                try:
-                    await cursor.executemany(insert_query, news_summary_list)
-                    await connection.commit()
-                    print(f"成功處理 {len(news_summary_list)} 筆新聞摘要")
-                except Exception as e:
-                    print(f"寫入失敗: {e}") 
-
-    async def fetch_cate_news(self, category: str):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                    SELECT category, url , news_id, title
-                    FROM news
-                    WHERE category = %s
-                    '''
-                try:
-                    await cursor.execute(select_query, (category,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-    
-    async def fetch_specific_summary(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                if news_id:
-                    select_query = '''
-                        SELECT s.news_id, s.news_summary, s.category, n.title
-                        FROM single_news_summary s
-                        INNER JOIN news n ON s.news_id = n.news_id
-                        WHERE s.news_id = %s
-                        '''
-                    
-                    try:
-                        await cursor.execute(select_query, (news_id,))
-                        result = await cursor.fetchall()
-                        return result
-                    except Exception as e:
-                            print(f"讀取失敗: {e}") 
-                            return []
-
-                if category:
-                    select_query = '''
-                        SELECT news_id, news_summary
-                        FROM single_news_summary
-                        WHERE category = %s
-                        '''
-                    try:
-                        await cursor.execute(select_query, (category,))
-                        result = await cursor.fetchall()
-                        return result
-                    except Exception as e:
-                        print(f"讀取失敗: {e}") 
-                        return []
-
-    async def fetch_news_content(self, news_id: int | None = None, category: str | None = None, batch: bool | None = None, keyword: str | None = None):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                if category:
-                    if not batch:
-                        select_query = '''
-                            SELECT category, news_id, title, content
-                            FROM news
-                            WHERE category = %s
-                            '''
-                        try:
-                            await cursor.execute(select_query, (category,))
-                            result = await cursor.fetchall()
-                            return result
-                        except Exception as e:
-                            print(f"讀取失敗: {e}") 
-                            return []
-
-                if batch:
-                    select_query = '''
-                        SELECT news_id, title, content
-                        FROM news
-                        WHERE category = %s
-                        '''
-                    try:
-                        await cursor.execute(select_query, (category,))
-                        result = await cursor.fetchall()
-                        return result
-                    except Exception as e:
-                        print(f"讀取失敗: {e}") 
-                        return []
-
-                if news_id:
-                    select_query = '''
-                        SELECT news_id, title, content, category
-                        FROM news
-                        WHERE news_id = %s
-                        '''
-                    try:
-                        await cursor.execute(select_query, (news_id,))
-                        result = await cursor.fetchall()
-                        return result
-                    except Exception as e:
-                        print(f"讀取失敗: {e}") 
-                        return []
-                    
-                if keyword:
-                    select_query = '''
-                        SELECT category, url , news_id, title
-                        FROM news
-                        WHERE title ILIKE %s
-                        OR %s = ANY(keywords)
-                        '''
-                    try:
-                        await cursor.execute(select_query, (f"%{keyword}%", keyword))
-                        result = await cursor.fetchall()
-                        if result:
-                            return result
-                        else: 
-                            return None
-                    except Exception as e:
-                        print(f"讀取失敗: {e}") 
-                        return None
-
-    async def fetch_news_summary(self, category: str):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                    SELECT n.news_id, n.title, s.category, s.news_summary
-                    FROM single_news_summary s
-                    INNER JOIN news n ON s.news_id = n.news_id
-                    WHERE s.category = %s
-                    '''
-                try:
-                    await cursor.execute(select_query, (category,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-
-    async def fetch_cate_summary(self, category: str):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                    SELECT category, news_summary
-                    FROM cate_news_summary
-                    WHERE category = %s
-                    '''
-                try:
-                    await cursor.execute(select_query, (category,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-
-    async def web_fetch_news(self):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
-                            FROM news
-                            '''
-                try:
-                    await cursor.execute(select_query)
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-                
-    async def web_fetch_news_contents(self, news_id: int):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                            SELECT news_id AS id, title AS title, category AS category, article_image AS img,content AS content
-                            FROM news
-                            WHERE news_id = %s
-                            '''
-                try:
-                    await cursor.execute(select_query, (news_id,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
-
-    async def web_search_news(self, keyword: str):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
-                            FROM news
-                            WHERE title ILIKE %s
-                            OR %s = ANY(keywords)
-                            '''
-                try:
-                    
-                    await cursor.execute(select_query, (f"%{keyword}%", keyword))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
+                    logger.exception("建立表格失敗")
+                    raise DatabaseError("建立表格失敗") from e
 
     async def truncate_table(self, table: str):
         if table not in _TRUNCATABLE_TABLES:
@@ -290,40 +67,47 @@ class NewsDB:
                     await connection.commit()
                     print(f"Table {table} deleted successfully!")
                 except Exception as e:
-                    print(f"Error deleting table {table}: {e}")
+                    logger.exception(f"清空表格 {table} 失敗")
+                    raise DatabaseError(f"清空表格 {table} 失敗") from e
 
+    # --- news ---
+    async def insert_news(self, news_list):
+        return await self._news.insert_news(news_list)
+
+    async def fetch_cate_news(self, category: str):
+        return await self._news.fetch_cate_news(category)
+
+    async def fetch_news_content(self, news_id: str | None = None, category: str | None = None, batch: bool | None = None, keyword: str | None = None):
+        return await self._news.fetch_news_content(news_id=news_id, category=category, batch=batch, keyword=keyword)
+
+    async def web_fetch_news(self):
+        return await self._news.web_fetch_news()
+
+    async def web_fetch_news_contents(self, news_id: str):
+        return await self._news.web_fetch_news_contents(news_id)
+
+    async def web_search_news(self, keyword: str):
+        return await self._news.web_search_news(keyword)
 
     async def test_web_fetch_news(self):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                            SELECT news_id AS id, title AS title, category AS category, article_image AS img
-                            FROM news
-                            WHERE category = ANY(%s)
-                            '''
-                try:
-                    await cursor.execute(select_query, (SANDBOX_CATEGORIES,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}")
-                    return []
+        return await self._news.test_web_fetch_news()
 
+    # --- single_news_summary ---
+    async def insert_news_summary(self, news_summary_list):
+        return await self._single_summaries.insert_news_summary(news_summary_list)
 
-    async def test_web_fetch_specific_summary(self, news_id: int):
-        async with self.pool.connection() as connection:
-            async with connection.cursor(row_factory=dict_row) as cursor:
-                select_query = '''
-                        SELECT s.news_id, s.news_summary, s.category, n.title
-                        FROM single_news_summary s
-                        INNER JOIN news n ON s.news_id = n.news_id
-                        WHERE s.news_id = %s
-                            '''
-                try:
-                    await cursor.execute(select_query, (news_id,))
-                    result = await cursor.fetchall()
-                    return result
-                except Exception as e:
-                    print(f"讀取失敗: {e}") 
-                    return []
+    async def fetch_specific_summary(self, news_id: str | None = None, category: str | None = None, batch: bool | None = None):
+        return await self._single_summaries.fetch_specific_summary(news_id=news_id, category=category, batch=batch)
 
+    async def fetch_news_summary(self, category: str):
+        return await self._single_summaries.fetch_news_summary(category)
+
+    async def test_web_fetch_specific_summary(self, news_id: str):
+        return await self._single_summaries.test_web_fetch_specific_summary(news_id)
+
+    # --- cate_news_summary ---
+    async def insert_cate_summary(self, category, cate_summary_tuple):
+        return await self._cate_summaries.insert_cate_summary(category, cate_summary_tuple)
+
+    async def fetch_cate_summary(self, category: str):
+        return await self._cate_summaries.fetch_cate_summary(category)
