@@ -7,7 +7,7 @@ class TestUser(HttpUser):
 
     """def on_start(self):
         # 建議加上 name="/api/news"，保持報表整潔
-        with self.client.get("/api/test/news", name="/api/test/news", catch_response=True) as response:
+        with self.client.get("/api/sandbox/news", name="/api/sandbox/news", catch_response=True) as response:
             if response.status_code == 200:
                 news_data = response.json()
                 self.news_ids = [news['id'] for news in news_data]
@@ -43,7 +43,7 @@ class TestUser(HttpUser):
 
     @task
     def test_summary_generation(self):
-        with self.client.post("/api/test/news/9338960/summary", name="/api/test/news/[id]/summary", catch_response=True) as response:
+        with self.client.post("/api/sandbox/news/9338960/summary", name="/api/sandbox/news/[id]/summary", catch_response=True) as response:
             if response.status_code == 200:
                 response.success()
             else:

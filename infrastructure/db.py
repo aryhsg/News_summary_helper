@@ -89,8 +89,8 @@ class NewsDB:
     async def web_search_news(self, keyword: str):
         return await self._news.web_search_news(keyword)
 
-    async def test_web_fetch_news(self):
-        return await self._news.test_web_fetch_news()
+    async def sandbox_fetch_news(self):
+        return await self._news.sandbox_fetch_news()
 
     # --- single_news_summary ---
     async def insert_news_summary(self, news_summary_list):
@@ -102,8 +102,8 @@ class NewsDB:
     async def fetch_news_summary(self, category: str):
         return await self._single_summaries.fetch_news_summary(category)
 
-    async def test_web_fetch_specific_summary(self, news_id: str):
-        return await self._single_summaries.test_web_fetch_specific_summary(news_id)
+    async def sandbox_fetch_specific_summary(self, news_id: str):
+        return await self._single_summaries.sandbox_fetch_specific_summary(news_id)
 
     # --- cate_news_summary ---
     async def insert_cate_summary(self, category, cate_summary_tuple):

@@ -120,16 +120,18 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
             return {"category": category, "summary": "該類別尚無摘要"}
     
 
-    @app.get("/api/test/news", response_model=List[NewsListItem])
-    async def get_test_news_list(_ = Depends(get_api_key)):
-        news = await db_instance.test_web_fetch_news()
+    # /api/sandbox/... 是不耗用 Gemini 配額的示範端點，跟 pytest 單元測試
+    # 是兩件事，命名/路徑避免再用「test」避免混淆（Stage 5）。
+    @app.get("/api/sandbox/news", response_model=List[NewsListItem])
+    async def get_sandbox_news_list(_ = Depends(get_api_key)):
+        news = await db_instance.sandbox_fetch_news()
         return news
 
-    @app.post("/api/test/news/{news_id}/summary", response_model=NewsSummary)
-    async def get_test_news_summary(news_id: str, _ = Depends(get_api_key)):
+    @app.post("/api/sandbox/news/{news_id}/summary", response_model=NewsSummary)
+    async def get_sandbox_news_summary(news_id: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         redis = redis_instance
-        title, summary = await gen_summary_lock.test_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
+        title, summary = await gen_summary_lock.sandbox_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
         return {"id": news_id, "summary": summary}
 
     return app
