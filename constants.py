@@ -10,7 +10,7 @@ gemini/gen_cate_summary.py、gemini/gen_sig_summary.py、infrastructure/db.py
   較少類別以控制 Gemini token 成本，不是漏改。
 - BATCH_SUMMARY_CATEGORIES：排程批次生成單篇新聞摘要時掃描的類別子集，
   跟 CATE_SUMMARY_CATEGORIES 成員不同也是刻意的，同樣是成本考量。
-- SANDBOX_CATEGORIES：/api/test（sandbox，不耗用 Gemini 配額）端點用的
+- SANDBOX_CATEGORIES：/api/sandbox（不耗用 Gemini 配額的示範端點）用的
   類別子集。
 """
 

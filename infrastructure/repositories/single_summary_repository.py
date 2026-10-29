@@ -75,9 +75,8 @@ class SingleSummaryRepository:
                     logger.exception("讀取單篇摘要清單（依分類）失敗")
                     raise DatabaseError("讀取單篇摘要清單（依分類）失敗") from e
 
-    async def test_web_fetch_specific_summary(self, news_id: str):
-        """給 /api/test（sandbox）端點用，命名沿用 db.py 原本的名稱，
-        之後 Stage 5 要做 sandbox 命名清理時再改。"""
+    async def sandbox_fetch_specific_summary(self, news_id: str):
+        """給 /api/sandbox（不耗用 Gemini 配額的示範端點）用的單篇摘要查詢。"""
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
                 select_query = '''

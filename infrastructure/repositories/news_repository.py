@@ -148,10 +148,9 @@ class NewsRepository:
                     logger.exception("搜尋新聞失敗")
                     raise DatabaseError("搜尋新聞失敗") from e
 
-    async def test_web_fetch_news(self):
-        """給 /api/test（sandbox，不耗用 Gemini 配額）端點用的新聞列表，
-        只開放 SANDBOX_CATEGORIES 這個子集。命名沿用 db.py 原本的
-        test_web_fetch_news，之後 Stage 5 要做 sandbox 命名清理時再改。"""
+    async def sandbox_fetch_news(self):
+        """給 /api/sandbox（不耗用 Gemini 配額的示範端點）用的新聞列表，
+        只開放 SANDBOX_CATEGORIES 這個子集。"""
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
                 select_query = '''

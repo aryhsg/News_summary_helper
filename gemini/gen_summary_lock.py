@@ -68,8 +68,9 @@ async def generate_summary_with_lock(news_id: int, db_instance, redis_instance, 
 
 
 
-async def test_generate_summary_with_lock(news_id: int, db_instance, redis_instance):
-    result = await db_instance.test_web_fetch_specific_summary(news_id)
+async def sandbox_generate_summary_with_lock(news_id: int, db_instance, redis_instance):
+    """給 /api/sandbox（不耗用 Gemini 配額的示範端點）用，模擬生成摘要的流程。"""
+    result = await db_instance.sandbox_fetch_specific_summary(news_id)
 
     if result and result[0].get("news_summary"):
         summary = result[0].get("news_summary")
@@ -77,8 +78,8 @@ async def test_generate_summary_with_lock(news_id: int, db_instance, redis_insta
         print("資料庫存在該新聞摘要")
         return title, summary
 
-    async with redis_instance.get_lock(str(news_id), timeout=60):        
-        result = await db_instance.test_web_fetch_specific_summary(news_id)
+    async with redis_instance.get_lock(str(news_id), timeout=60):
+        result = await db_instance.sandbox_fetch_specific_summary(news_id)
         
         if result and result[0].get("news_summary"):
             summary = result[0].get("news_summary")
