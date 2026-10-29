@@ -8,7 +8,7 @@ load_dotenv()
 from web import fastapi_service
 from tests.mockdata import *
 from infrastructure import NewsDB
-from gemini import gemini_service, gen_summary_lock, get_str_summary, get_formatted_summary
+from gemini import gemini_service, locking, get_str_summary, get_formatted_summary
 from infrastructure import RedisManager
 from web.fastapi_service import create_web_app
 
@@ -112,7 +112,7 @@ async def test_get_news_summary_success(monkeypatch):
     mock_fetch = AsyncMock(return_value=("測試要聞新聞標題", "測試要聞新聞摘要"))  
 
     # 2. 替換原本的 db_instance.web_fetch_news_contents 成我們的模擬函數
-    monkeypatch.setattr(gen_summary_lock, "generate_summary_with_lock", mock_fetch)
+    monkeypatch.setattr(locking, "generate_summary_with_lock", mock_fetch)
 
     # 3. 發送 POST 請求到 /api/news/12345/summary 路徑，這裡的 12345 是我們模擬資料中的新聞 ID
     response = client.post("/api/news/12345/summary", headers=headers)
@@ -135,9 +135,12 @@ async def test_get_news_summary_not_found(monkeypatch):
         if text is None:
             return ""
         return f"{text}"
-    # 2. 替換原本的 gen_summary_lock.generate_summary_with_lock 成我們的模擬函數
-    monkeypatch.setattr(gen_summary_lock, "generate_summary_with_lock", mock_fetch)
-    monkeypatch.setattr(gen_summary_lock, "advanced_format_summary", mock_format)
+    # 2. 替換原本的 locking.generate_summary_with_lock 成我們的模擬函數
+    monkeypatch.setattr(locking, "generate_summary_with_lock", mock_fetch)
+    # advanced_format_summary 是純函式（gemini/formatting.py），web/fastapi_service.py
+    # 用 flat import 取用，所以要在呼叫端（fastapi_service）這個命名空間上 patch，
+    # 而不是在它原本定義的模組上 patch（跟下面 get_formatted_summary 的 patch 方式一致）。
+    monkeypatch.setattr(target=fastapi_service, name="advanced_format_summary", value=mock_format)
     # 3. 發送 POST 請求到 /api/news/99999/summary 路徑，這裡的 99999 是一個不存在的新聞 ID
     response = client.post("/api/news/99999/summary", headers=headers)
 

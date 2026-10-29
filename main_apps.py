@@ -21,7 +21,7 @@ if sys.platform == "win32":
 
 from line_bot import create_line_app
 from web import create_web_app
-from gemini import gemini_client
+from gemini import client as gemini_client
 from infrastructure import db
 from infrastructure import redis_manager
 

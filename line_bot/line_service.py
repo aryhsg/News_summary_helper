@@ -3,7 +3,7 @@ import os
 import json
 
 from constants import ALL_CATEGORIES
-from gemini import gen_summary_lock, get_str_summary
+from gemini import locking, get_str_summary
 from line_bot.msg_templates import templates
 cate_news_list = templates.Cate_News_list_Template()
 catelist = templates.CateList_Template()
@@ -74,7 +74,7 @@ class line_forward_rules:
                 elif d_body['events'][0]['postback']['data'].startswith("http") :
                     url = d_body['events'][0]['postback']['data']
                     news_id = url.split("/")[-1].split("?")[0]
-                    title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
+                    title, summary = await locking.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
                     await self.__return_news_summary(d_body=d_body, news_summary=summary, title=title)
 
 

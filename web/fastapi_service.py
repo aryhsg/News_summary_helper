@@ -2,7 +2,7 @@ import os
 import asyncio
 from typing import List
 from pydantic import BaseModel
-from gemini import gen_summary_lock, get_formatted_summary
+from gemini import locking, get_formatted_summary, advanced_format_summary
 from fastapi import FastAPI, HTTPException, Security, Depends, status, Query
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import JSONResponse
@@ -104,8 +104,8 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         newsdb = db_instance
         redis = redis_instance
         gemini = gemini_instance
-        title, summary = await gen_summary_lock.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
-        html_summary = gen_summary_lock.advanced_format_summary(summary)
+        title, summary = await locking.generate_summary_with_lock(news_id=news_id, redis_instance=redis, gemini_instance=gemini, db_instance=newsdb)
+        html_summary = advanced_format_summary(summary)
         return {"id": news_id, "summary": html_summary}
 
     @app.post("/api/news/summary/{category}", response_model=CateSummary)
@@ -131,7 +131,7 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
     async def get_sandbox_news_summary(news_id: str, _ = Depends(get_api_key)):
         newsdb = db_instance
         redis = redis_instance
-        title, summary = await gen_summary_lock.sandbox_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
+        title, summary = await locking.sandbox_generate_summary_with_lock(news_id=news_id, redis_instance=redis, db_instance=newsdb)
         return {"id": news_id, "summary": summary}
 
     return app

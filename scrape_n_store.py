@@ -19,8 +19,8 @@ if sys.platform == "win32":
 from news_crawler import scrape_news
 import infrastructure.db as db
 import infrastructure.redis_manager as redis_manager
-import gemini.gemini_client as gemini_client
-import gemini.gen_sig_summary as gen_sig_summary
+import gemini.client as gemini_client
+import gemini.generation as generation
 from contextlib import asynccontextmanager
 
 
@@ -60,7 +60,7 @@ async def main():
             await asyncio.sleep(300)
             
             async with db_lifespan() as (db, redis, gemini):
-                await gen_sig_summary.batch_gen_all_sum_n_store(db=db, gemini=gemini, redis=redis)
+                await generation.batch_gen_all_sum_n_store(db=db, gemini=gemini, redis=redis)
         except Exception as e:
                 print(f"Error in main: {e}")
 
