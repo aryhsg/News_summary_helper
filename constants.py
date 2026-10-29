@@ -1,7 +1,7 @@
 """新聞類別清單的單一來源（Stage 2）。
 
 取代原本在 line_bot/line_service.py、line_bot/msg_templates/templates.py、
-gemini/gen_cate_summary.py、gemini/gen_sig_summary.py、infrastructure/db.py
+gemini/gen_cate_summary.py、gemini/generation.py、infrastructure/db.py
 各自硬編碼、彼此不一致的類別清單。
 
 以下四份清單語意不同，刻意分開維護，不要為了「看起來應該一樣」而合併：

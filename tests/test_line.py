@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from line_bot import line_forward_rules, line_service
-from gemini import gen_summary_lock
+from gemini import locking
 
 
 
@@ -93,7 +93,7 @@ async def test_line_single_news_summary_flow(monkeypatch):
     
     # 模擬回傳標題與摘要內容
     mock_gen_summary = AsyncMock(return_value=("測試新聞標題", "這是 AI 生成的新聞摘要內容"))
-    monkeypatch.setattr(gen_summary_lock, "generate_summary_with_lock", mock_gen_summary)
+    monkeypatch.setattr(locking, "generate_summary_with_lock", mock_gen_summary)
 
     PAYLOAD_SINGLE_NEWS_SUMMARY = {
     "events": [{

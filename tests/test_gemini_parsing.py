@@ -6,8 +6,8 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from gemini import gen_summary_lock, gen_sig_summary
-from gemini.gen_cate_summary import get_str_summary, get_formatted_summary
+from gemini import locking, generation
+from gemini.formatting import get_str_summary, get_formatted_summary
 
 
 def _news_summary_json(news_id="123", title="測試標題", contents=("重點一", "重點二")):
@@ -55,16 +55,16 @@ async def test_generate_summary_with_lock_parses_single_object_not_list():
         news_id="123", contents=("第一個重點內容", "第二個重點內容")
     )
 
-    title, summary_str = await gen_summary_lock.generate_summary_with_lock(
+    title, summary_str = await locking.generate_summary_with_lock(
         news_id=123, db_instance=mock_db, redis_instance=mock_redis, gemini_instance=mock_gemini
     )
 
     assert title == "測試標題"
-    assert summary_str == "1. 第一個重點內容\n2. 第二個重點內容\n"
+    assert summary_str == "1. 第一個重點內容\n2. 第二個重點內容"
 
     # 存回資料庫時也要用正確解析出來的 news_id/摘要文字，而不是索引出錯造成的壞資料。
     mock_db.insert_news_summary.assert_awaited_once_with(
-        [("123", "1. 第一個重點內容\n2. 第二個重點內容\n", "要聞")]
+        [("123", "1. 第一個重點內容\n2. 第二個重點內容", "要聞")]
     )
 
 
@@ -75,7 +75,7 @@ async def test_batch_gen_sum_n_store_extracts_point_content(monkeypatch):
     每個 point 要取出 content 欄位，不是把整個 SinglePoint 字典印出來。
     """
     # 跳過真實的冷卻 sleep(5)，測試只關心解析邏輯對不對。
-    monkeypatch.setattr(gen_sig_summary.asyncio, "sleep", AsyncMock())
+    monkeypatch.setattr(generation.asyncio, "sleep", AsyncMock())
 
     mock_db = AsyncMock()
     mock_db.fetch_news_content.return_value = [
@@ -108,7 +108,7 @@ async def test_batch_gen_sum_n_store_extracts_point_content(monkeypatch):
         ensure_ascii=False,
     )
 
-    await gen_sig_summary.batch_gen_sum_n_store(
+    await generation.batch_gen_sum_n_store(
         category="要聞",
         DB_instance=mock_db,
         gemini_instance=mock_gemini,

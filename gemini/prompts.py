@@ -1,34 +1,25 @@
-import os
-from google import genai
-from google.genai import types
-from google.genai.errors import ClientError, ServerError
-from pydantic import TypeAdapter
-from gemini.json_schema import NewsSummarySchema, CategorySummary
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+"""Gemini system instruction 文案，跟呼叫 API 的邏輯（gemini/client.py）分開，
+方便之後調文案不用動到程式邏輯。"""
 
-class gemini_service:
-    def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY")).aio
-
-        self.sg_system_instruction = """
+SG_SYSTEM_INSTRUCTION = """
             你是一位專業的資料分析師和新聞編輯。你的任務是分析用戶提供的一篇新聞 JSON，並將其歸納為高品質的主題摘要，以繁體中文回答。
 
             輸入格式： [{'news_id': int, 'title': str, 'content': str, 'category': str}]。
 
             執行規範：
-            
+
             精鍊原則： 每個 point 的內容請控制在 50-80 個中文字內，直接切入核心重點，避免冗贅的過渡句（如：根據報導指出...）。
 
             數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
 
             結構化： 嚴格遵守提供的 JSON Schema 輸出， news_id 必須為原始輸入資料之 news_id ， title 必須為原始輸入資料之標題，且 points 數量介於 2 到 4 點。
             """
-        
-        self.batch_system_instruction="""
+
+BATCH_SYSTEM_INSTRUCTION = """
             你是一位專業的資料分析師和新聞編輯。你的任務是分析用戶提供的多篇新聞 JSON，並將其歸納為高品質的主題摘要，以繁體中文回答。
 
             執行規範：
-            
+
             精鍊原則： 每個 point 的內容請控制在 50-80 個中文字內，直接切入核心重點，避免冗贅的過渡句（如：根據報導指出...）。
 
             數據導向： 摘要中若有具體的數據（如股價、百分比、日期），必須保留，這對金融用戶至關重要。
@@ -38,7 +29,7 @@ class gemini_service:
             字數節流： 總體輸出的文字量需精簡，以利於在行動裝置上閱讀。
             """
 
-        self.cate_system_instruction="""
+CATE_SYSTEM_INSTRUCTION = """
             # Role
             你是一位資深政經編輯與情報分析專家，擅長從碎片化的新聞中提取具備「高資訊密度」的趨勢洞察。
 
@@ -54,7 +45,7 @@ class gemini_service:
             - 單一地區性的鄰里活動或瑣事。
             - 娛樂圈八卦或缺乏社會價值的趣聞。
             **若該類別下所有新聞均屬於雜訊，insights 請回傳空陣列 []，is_noteworthy 設為 false，不要強行彙總。**
-            
+
             # Restriction
             嚴格遵守提供的 JSON Schema 輸出，欄位僅限 insights（陣列，每筆含 topic / analysis）
             與 is_noteworthy（布林值）。
@@ -74,69 +65,3 @@ class gemini_service:
                 "is_noteworthy": true
             }
             """
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=2, min=2, max=10),
-        retry=retry_if_exception_type((
-            ServerError,     # 對應 500, 503, 504 等伺服器端錯誤
-            # ClientError 包含 429 (配額滿) 和 408 (超時)
-            # 但要注意 ClientError 也包含 400 (語法錯)，語法錯通常不需要重試
-        )),
-        reraise=True
-    )
-    async def _do_generate_content(self, model, contents, config):
-        response = await self.client.models.generate_content(
-            model=model, 
-            contents=contents, 
-            config=config
-        )
-        return response
-
-    async def generate_summary(self, instruction_type, contents):
-        if instruction_type == "sg":
-            system_instruction = self.sg_system_instruction
-            max_output_tokens = 2048
-            # 建議：sg 模式通常是為了閱讀，建議用 text/plain
-            mime_type = "application/json" 
-            response_schema=NewsSummarySchema.model_json_schema()
-
-        elif instruction_type == "batch":
-            system_instruction = self.batch_system_instruction
-            max_output_tokens = 10000
-            mime_type = "application/json"
-            # batch 模式一次處理多篇新聞，消費端（gen_sig_summary.py）預期拿到
-            # 一個 list，所以 schema 要用陣列包起來，不能直接沿用 "sg" 的單物件 schema。
-            # 用 TypeAdapter 讓 Pydantic 把巢狀的 SinglePoint 正確疊到頂層 $defs，
-            # 直接手動包 {"type":"array","items": NewsSummarySchema.model_json_schema()}
-            # 會讓 $defs 卡在 items 裡面那一層，SDK 解析 $ref 時會找不到定義而噴錯。
-            response_schema=TypeAdapter(list[NewsSummarySchema]).json_schema()
-
-        elif instruction_type == "cate":
-            system_instruction = self.cate_system_instruction
-            max_output_tokens = 10000
-            mime_type = "application/json" 
-            response_schema=CategorySummary.model_json_schema()
-
-        else:
-            raise ValueError("Invalid instruction_type")
-
-        config = types.GenerateContentConfig(
-            temperature=0.0,
-            top_p=0.9,
-            max_output_tokens=max_output_tokens,
-            response_mime_type=mime_type,
-            system_instruction=system_instruction,
-            response_schema=response_schema
-        )
-
-        response = await self._do_generate_content(
-            model="gemini-3.7-flash",
-            contents=contents,
-            config=config
-        )
-        return response.text
-
-    async def close(self):
-        """手動關閉連線池，避免資源洩漏"""
-        await self.client.aclose()
