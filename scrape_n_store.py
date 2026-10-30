@@ -51,18 +51,25 @@ async def scrape_n_store(db):
     except Exception as e:
         print(f"db error: {e}")
 
-async def main():
+async def main(scrape_only: bool = False):
         try:
             async with db_lifespan() as (db, redis, gemini):
                 await scrape_n_store(db=db)
 
             print("finish scraping")
+
+            # cron 的每小時排程只需要爬蟲、不需要每次都打 Gemini 生成批次摘要
+            # （那個比較適合獨立排程，之後要開再開），--scrape-only 讓這支
+            # 腳本可以單獨只做爬蟲這一半。
+            if scrape_only:
+                return
+
             await asyncio.sleep(300)
-            
+
             async with db_lifespan() as (db, redis, gemini):
                 await generation.batch_gen_all_sum_n_store(db=db, gemini=gemini, redis=redis)
         except Exception as e:
                 print(f"Error in main: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(scrape_only="--scrape-only" in sys.argv))

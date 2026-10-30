@@ -1,0 +1,4 @@
+# cron 跟 shell script 對行尾字元很敏感：CRLF 會讓 crontab 整行被當成壞掉的
+# 指令、或讓 shebang（#!/bin/sh）解析失敗。本機是 Windows，git 預設的
+# autocrlf 行為可能在簽出時把這些檔案轉成 CRLF，強制它們永遠維持 LF。
+deploy/cron/* text eol=lf
