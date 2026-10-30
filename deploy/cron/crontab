@@ -1,0 +1,11 @@
+# News_summary_helper 排程設定。
+#
+# cron 執行工作時預設環境是乾淨的，不會自動帶入 container 啟動時的環境
+# 變數（DB_USERNAME 之類），所以每行都要先 `. /etc/environment` 把
+# entrypoint.sh 存好的那份環境變數讀進來。輸出導到容器自己的 PID 1
+# stdout/stderr（/proc/1/fd/...），這樣 `docker logs nsh_cron` 就能直接
+# 看到排程工作印出來的東西，不用額外進容器看 log 檔。
+#
+# 分  時  日  月  星期  使用者  指令
+0  *  *  *  *  root  cd /app && . /etc/environment && python scrape_n_store.py --scrape-only > /proc/1/fd/1 2> /proc/1/fd/2
+0  0  *  *  *  root  cd /app && . /etc/environment && python daily_truncate_tables.py > /proc/1/fd/1 2> /proc/1/fd/2
