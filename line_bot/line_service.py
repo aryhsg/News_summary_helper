@@ -3,6 +3,7 @@ import os
 import json
 
 from constants import ALL_CATEGORIES
+from infrastructure.exceptions import NewsNotFoundError
 from gemini import locking, get_str_summary
 from line_bot.msg_templates import templates
 cate_news_list = templates.Cate_News_list_Template()
@@ -74,7 +75,12 @@ class line_forward_rules:
                 elif d_body['events'][0]['postback']['data'].startswith("http") :
                     url = d_body['events'][0]['postback']['data']
                     news_id = url.split("/")[-1].split("?")[0]
-                    title, summary = await locking.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
+                    try:
+                        title, summary = await locking.generate_summary_with_lock(news_id=news_id, db_instance=self.db, redis_instance=self.redis, gemini_instance=self.gemini)
+                    except NewsNotFoundError:
+                        # 每日清空資料後，聊天記錄裡舊的新聞按鈕還指著已被清掉的新聞。
+                        await self.text_message(d_body=d_body, news_expired=True)
+                        return
                     await self.__return_news_summary(d_body=d_body, news_summary=summary, title=title)
 
 
@@ -143,7 +149,7 @@ class line_forward_rules:
         print(f"回覆訊息內容: {response.text}")
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def text_message(self, d_body, has_news: bool | None = None, has_cate_sum: bool | None = None):
+    async def text_message(self, d_body, has_news: bool | None = None, has_cate_sum: bool | None = None, news_expired: bool | None = None):
 
         header = {  
             "Content-Type": "application/json",
@@ -164,6 +170,9 @@ class line_forward_rules:
 
         if has_cate_sum == False:
             json_msg["messages"][0]["text"] = "類別摘要將於每日下午2點以及晚上7點產出，敬請期待！"
+
+        if news_expired:
+            json_msg["messages"][0]["text"] = "這則新聞已過期，請重新選擇類別查看最新新聞"
 
         async with httpx.AsyncClient() as client:
             try:

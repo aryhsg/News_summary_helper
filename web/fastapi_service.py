@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from contextlib import asynccontextmanager
 
-from infrastructure.exceptions import DatabaseError
+from infrastructure.exceptions import DatabaseError, NewsNotFoundError
 
 
 
@@ -78,6 +78,12 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         # 跟「查詢成功但查到 0 筆」（repository 回傳空 list）是兩種狀況，
         # 不應該都變成 200 空陣列或 404，這裡統一回 503。
         return JSONResponse(status_code=503, content={"detail": "資料庫暫時無法使用，請稍後再試"})
+
+    @app.exception_handler(NewsNotFoundError)
+    async def news_not_found_handler(request: Request, exc: NewsNotFoundError):
+        # 要求摘要的新聞不存在（常見原因：每日清空資料後，舊頁面還開著）。
+        # 回 404，跟 GET /api/news/{id} 找不到時一致，不是 500。
+        return JSONResponse(status_code=404, content={"detail": "找不到這則新聞，可能已過期，請重新整理頁面"})
 
     @app.get("/api/news", response_model=List[NewsListItem])
     async def get_news_list(_ = Depends(get_api_key)):

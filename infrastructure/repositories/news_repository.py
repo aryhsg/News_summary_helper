@@ -8,6 +8,13 @@ from infrastructure.exceptions import DatabaseError
 logger = logging.getLogger(__name__)
 
 
+def escape_like(keyword: str) -> str:
+    """跳脫 LIKE/ILIKE 的萬用字元。PostgreSQL 預設以反斜線當跳脫字元，所以把
+    使用者輸入裡的 \\、% 與 _ 各加一個反斜線，搜尋 % 時就只找真的含 % 的標題，
+    不會變成「匹配全部」。"""
+    return keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class NewsRepository:
     """負責 news 表的讀寫。"""
 
@@ -96,7 +103,7 @@ class NewsRepository:
                         OR %s = ANY(keywords)
                         '''
                     try:
-                        await cursor.execute(select_query, (f"%{keyword}%", keyword))
+                        await cursor.execute(select_query, (f"%{escape_like(keyword)}%", keyword))
                         result = await cursor.fetchall()
                         return result if result else None
                     except Exception as e:
@@ -135,14 +142,19 @@ class NewsRepository:
     async def web_search_news(self, keyword: str):
         async with self.pool.connection() as connection:
             async with connection.cursor(row_factory=dict_row) as cursor:
+                # 標題、內文、關鍵字任一個含有搜尋字串（不分大小寫、部分比對）就算符合。
+                # 內文是爬蟲留下的 HTML，比對前先用 regexp_replace 去掉標籤與註解，
+                # 否則搜尋 "p"、"img"、"href" 會因為比對到標籤而列出一堆不相關的新聞。
                 select_query = '''
                             SELECT news_id AS id, title AS title, category AS category, article_image AS img
                             FROM news
                             WHERE title ILIKE %s
-                            OR %s = ANY(keywords)
+                            OR regexp_replace(content, '<[^>]*>', '', 'g') ILIKE %s
+                            OR EXISTS (SELECT 1 FROM unnest(keywords) AS k WHERE k ILIKE %s)
                             '''
+                pattern = f"%{escape_like(keyword)}%"
                 try:
-                    await cursor.execute(select_query, (f"%{keyword}%", keyword))
+                    await cursor.execute(select_query, (pattern, pattern, pattern))
                     return await cursor.fetchall()
                 except Exception as e:
                     logger.exception("搜尋新聞失敗")

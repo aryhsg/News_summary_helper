@@ -39,7 +39,6 @@ def test_news_detail_found_and_not_found(api):
     assert missing.status_code == 404
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-05：locking.generate_summary_with_lock 查不到新聞時仍取 query_result[0]，空結果造成 500")
 def test_summary_for_nonexistent_news_is_404_not_500(api):
     """J3：對不存在的新聞要求摘要，應該回 404，不是 500。
     後端沒找到新聞時仍取 `query_result[0]`，會因為空結果而拋出例外。"""

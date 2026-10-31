@@ -12,15 +12,15 @@
 | DEF-01 | 高 | ✅ 已修正（前端） | 新聞內文以 `innerHTML` 插入，內文含 `<img onerror>` 時腳本會執行 | `test_security.py::test_malicious_content_does_not_execute_script` |
 | DEF-10 | 高 | ✅ 已修正（前端） | 單篇摘要與類別摘要以 `innerHTML` 插入，`<img onerror>` 會執行 | `test_security.py::test_single_summary_…`、`test_category_summary_…` |
 | DEF-02 | 中 | 未修 | 後端回傳的摘要未跳脫 HTML，`<b>` 等標籤被渲染而不是顯示成文字 | `test_summary.py::test_summary_with_html_special_chars_is_not_interpreted` |
-| DEF-05 | 中 | 未修 | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
-| DEF-04 | 中 | 未修 | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
-| DEF-03 | 低 | 未修 | 搜尋 `%`、`_` 被當成萬用字元，`%` 會列出全部新聞 | `test_search.py::test_percent_sign_is_searched_literally` |
+| DEF-05 | 中 | ✅ 已修正（後端） | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
+| DEF-04 | 中 | ✅ 已修正（後端） | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
+| DEF-03 | 低 | ✅ 已修正（後端） | 搜尋 `%`、`_` 被當成萬用字元，`%` 會列出全部新聞 | `test_search.py::test_percent_sign_is_searched_literally` |
 | DEF-06 | 低 | ✅ 已修正（前端） | 超長無空白標題超出卡片寬度 | `test_article_panel.py::test_very_long_unbroken_title_does_not_overflow_page` |
 | DEF-07 | 低 | ✅ 已修正（前端） | 「該類別尚無摘要」被快取，後端之後產生了也要重新整理才看得到 | `test_errors.py::test_category_summary_note_is_not_cached_forever` |
 | DEF-08 | 低 | ✅ 已修正（前端） | 403 的使用者訊息提到 `config.js`、`API_KEY` | `test_errors.py::test_403_message_does_not_leak_developer_details` |
 | DEF-09 | 低 | ✅ 已修正（前端） | 連線失敗的使用者訊息提到 CORS、`API_BASE` | `test_errors.py::test_network_failure_message_does_not_leak_developer_details` |
 
-「未修」的缺陷在測試裡是 `xfail(strict=True)`；已修正的缺陷已拿掉標記，現在是一般的通過測試，作為回歸保護。目前未修的有 DEF-02、03、04、05 四個。
+「未修」的缺陷在測試裡是 `xfail(strict=True)`；已修正的缺陷已拿掉標記，現在是一般的通過測試，作為回歸保護。目前未修的只剩 DEF-02。
 
 ---
 
@@ -50,7 +50,7 @@
 - **根因**：後端 `gemini/formatting.py` 沒有任何跳脫。前端無法分辨摘要裡的標籤是後端排版用的，還是 LLM 文字裡的字面內容，所以這件事只有後端能正確處理。
 - **建議**：後端在組成 HTML 前先對文字內容跳脫，再套上自己的排版標籤。
 
-## DEF-05　不存在的新聞要求摘要回 500
+## DEF-05　不存在的新聞要求摘要回 500　✅ 已修正
 - **嚴重度**：中
 - **重現**：`POST /api/news/0000000/summary`（帶正確金鑰）。
 - **預期**：404，與詳情端點一致。
@@ -58,22 +58,29 @@
 - **根因**：`gemini/locking.py` 的 `generate_summary_with_lock` 查不到新聞時仍執行 `query_result[0]`，空結果造成例外。
 - **影響**：使用者傳入無效 ID 會看到「伺服器發生錯誤」，且過程中已取得 Redis 鎖與呼叫流程。
 - **建議**：查詢結果為空時直接回 404，不要進入生成流程。
+- **修正**：`gemini/locking.py` 查不到新聞時丟 `NewsNotFoundError`（不再取 `query_result[0]`，也不呼叫 Gemini）；Web API 轉成 404（訊息「找不到這則新聞，可能已過期，請重新整理頁面」）；LINE 回覆「這則新聞已過期，請重新選擇類別查看最新新聞」。
+- **補充**：每天 00:00 會清空資料，網頁開著過夜或 LINE 聊天記錄裡的舊按鈕都會遇到這個情況，所以實際發生的機率比表面上高。LINE 原本會因為例外被吞掉而完全沒有回應。
+- **驗證**：E2E、單元測試各有對應測試（含 LINE 回覆、Gemini 不被呼叫）。原本的單元測試 `test_get_news_summary_not_found` 假設「找不到時回 200 加空摘要」，與真實行為不符，已改成預期 404。
 
-## DEF-04　搜尋關鍵字只能完全相等
+## DEF-04　搜尋關鍵字只能完全相等　✅ 已修正
 - **嚴重度**：中
 - **重現**：搜尋「寧德」（新聞 `9836834` 的關鍵字是「寧德時代」，標題不含「寧德」）。
 - **預期**：找到該新聞，搜尋框提示是「搜尋標題或關鍵字」。
 - **實際**：找不到；搜尋完整的「寧德時代」才找得到（有正向測試）。
 - **根因**：`infrastructure/repositories/news_repository.py` 的 `web_search_news` 用 `%s = ANY(keywords)`，是完全相等比對。
 - **建議**：要支援部分比對，可改用 `EXISTS (SELECT 1 FROM unnest(keywords) k WHERE k ILIKE ...)`；或把提示文字改成「搜尋標題」。
+- **修正**：搜尋範圍改為「標題、內文、關鍵字」任一個含有搜尋字串（不分大小寫、部分比對）。內文是爬蟲留下的 HTML，比對前先用 `regexp_replace` 去掉標籤與註解，否則搜尋 `p`、`img`、`href` 或 `!--` 會比對到標籤而列出不相關的新聞（有測試）。前端提示文字改為「搜尋標題、內文或關鍵字」。
+- **範圍**：只改網頁搜尋（`web_search_news`）。LINE 的關鍵字查詢是另一段程式，仍然只比對標題與完全相等的關鍵字，沒有改。
 
-## DEF-03　搜尋 `%`、`_` 被當成萬用字元
+## DEF-03　搜尋 `%`、`_` 被當成萬用字元　✅ 已修正
 - **嚴重度**：低
 - **重現**：搜尋 `%`。
 - **預期**：只列出標題真的含 `%` 的新聞（固定資料有 1 篇）。
 - **實際**：列出全部 14 篇。
 - **根因**：`web_search_news` 把使用者輸入包成 `f"%{keyword}%"`，沒有跳脫 `%` 與 `_`。不是 SQL 注入（參數化查詢，另有測試確認），但搜尋結果不正確。
 - **建議**：先把使用者輸入中的 `\`、`%`、`_` 跳脫，再包 `%`。
+- **修正**：新增 `escape_like()`，把輸入裡的 `\`、`%`、`_` 加上反斜線再包成 `%…%`；網頁搜尋與 LINE 關鍵字查詢都套用。
+- **驗證**：單元測試覆蓋跳脫函式；E2E 搜尋 `%` 只回傳真的含 `%` 的 3 篇（預期結果依固定資料動態計算），搜尋 `_` 回 0 筆。
 
 ## DEF-06　超長無空白標題超出卡片　✅ 已修正
 - **嚴重度**：低
