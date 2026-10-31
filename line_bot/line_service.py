@@ -3,7 +3,7 @@ import os
 import json
 
 from constants import ALL_CATEGORIES
-from infrastructure.exceptions import NewsNotFoundError
+from infrastructure.exceptions import GeminiResponseError, NewsNotFoundError
 from gemini import locking, get_str_summary
 from line_bot.msg_templates import templates
 cate_news_list = templates.Cate_News_list_Template()
@@ -81,6 +81,10 @@ class line_forward_rules:
                         # 每日清空資料後，聊天記錄裡舊的新聞按鈕還指著已被清掉的新聞。
                         await self.text_message(d_body=d_body, news_expired=True)
                         return
+                    except GeminiResponseError:
+                        # Gemini 回應不能用（重試後仍失敗），告訴使用者稍後再試，不要沒有回應。
+                        await self.text_message(d_body=d_body, summary_failed=True)
+                        return
                     await self.__return_news_summary(d_body=d_body, news_summary=summary, title=title)
 
 
@@ -149,7 +153,7 @@ class line_forward_rules:
         print(f"回覆訊息內容: {response.text}")
 
     # -------------------------------------------------------------------------------------------------------------------------------
-    async def text_message(self, d_body, has_news: bool | None = None, has_cate_sum: bool | None = None, news_expired: bool | None = None):
+    async def text_message(self, d_body, has_news: bool | None = None, has_cate_sum: bool | None = None, news_expired: bool | None = None, summary_failed: bool | None = None):
 
         header = {  
             "Content-Type": "application/json",
@@ -173,6 +177,9 @@ class line_forward_rules:
 
         if news_expired:
             json_msg["messages"][0]["text"] = "這則新聞已過期，請重新選擇類別查看最新新聞"
+
+        if summary_failed:
+            json_msg["messages"][0]["text"] = "摘要暫時產生失敗，請稍後再試"
 
         async with httpx.AsyncClient() as client:
             try:
