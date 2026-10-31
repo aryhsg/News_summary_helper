@@ -7,37 +7,48 @@
 重現環境：`docker compose -f tests/e2e/docker-compose.e2e.yml up -d --build`，頁面
 `http://localhost:8080`。以下「根因」指出問題所在的程式位置（前端為 `News_summary_helper_frontend/`）。
 
-| ID | 嚴重度 | 摘要 | 測試 |
-|---|---|---|---|
-| DEF-01 | 高 | 新聞內文以 `innerHTML` 插入，內文含 `<img onerror>` 時腳本會執行 | `test_security.py::test_malicious_content_does_not_execute_script` |
-| DEF-02 | 高 | 後端回傳的摘要未跳脫 HTML，前端又以 `innerHTML` 插入 | `test_summary.py::test_summary_with_html_special_chars_is_not_interpreted` |
-| DEF-05 | 中 | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
-| DEF-04 | 中 | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
-| DEF-03 | 低 | 搜尋 `%`、`_` 被當成萬用字元，`%` 會列出全部新聞 | `test_search.py::test_percent_sign_is_searched_literally` |
-| DEF-06 | 低 | 超長無空白標題超出卡片寬度 | `test_article_panel.py::test_very_long_unbroken_title_does_not_overflow_page` |
-| DEF-07 | 低 | 「該類別尚無摘要」被快取，後端之後產生了也要重新整理才看得到 | `test_errors.py::test_category_summary_note_is_not_cached_forever` |
-| DEF-08 | 低 | 403 的使用者訊息提到 `config.js`、`API_KEY` | `test_errors.py::test_403_message_does_not_leak_developer_details` |
-| DEF-09 | 低 | 連線失敗的使用者訊息提到 CORS、`API_BASE` | `test_errors.py::test_network_failure_message_does_not_leak_developer_details` |
+| ID | 嚴重度 | 狀態 | 摘要 | 測試 |
+|---|---|---|---|---|
+| DEF-01 | 高 | ✅ 已修正（前端） | 新聞內文以 `innerHTML` 插入，內文含 `<img onerror>` 時腳本會執行 | `test_security.py::test_malicious_content_does_not_execute_script` |
+| DEF-10 | 高 | ✅ 已修正（前端） | 單篇摘要與類別摘要以 `innerHTML` 插入，`<img onerror>` 會執行 | `test_security.py::test_single_summary_…`、`test_category_summary_…` |
+| DEF-02 | 中 | 未修 | 後端回傳的摘要未跳脫 HTML，`<b>` 等標籤被渲染而不是顯示成文字 | `test_summary.py::test_summary_with_html_special_chars_is_not_interpreted` |
+| DEF-05 | 中 | 未修 | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
+| DEF-04 | 中 | 未修 | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
+| DEF-03 | 低 | 未修 | 搜尋 `%`、`_` 被當成萬用字元，`%` 會列出全部新聞 | `test_search.py::test_percent_sign_is_searched_literally` |
+| DEF-06 | 低 | 未修 | 超長無空白標題超出卡片寬度 | `test_article_panel.py::test_very_long_unbroken_title_does_not_overflow_page` |
+| DEF-07 | 低 | 未修 | 「該類別尚無摘要」被快取，後端之後產生了也要重新整理才看得到 | `test_errors.py::test_category_summary_note_is_not_cached_forever` |
+| DEF-08 | 低 | 未修 | 403 的使用者訊息提到 `config.js`、`API_KEY` | `test_errors.py::test_403_message_does_not_leak_developer_details` |
+| DEF-09 | 低 | 未修 | 連線失敗的使用者訊息提到 CORS、`API_BASE` | `test_errors.py::test_network_failure_message_does_not_leak_developer_details` |
+
+「未修」的缺陷在測試裡是 `xfail(strict=True)`；已修正的缺陷已拿掉標記，現在是一般的通過測試，作為回歸保護。
 
 ---
 
-## DEF-01　內文含惡意 HTML 時會執行腳本（儲存型 XSS 風險）
+## DEF-01　內文含惡意 HTML 時會執行腳本（儲存型 XSS 風險）　✅ 已修正
 - **嚴重度**：高
 - **重現**：開啟新聞 `9900001`（固定資料裡構造的新聞，內文含 `<img src=x onerror=alert(1)>`）。
 - **預期**：腳本不執行，內文被清理或以文字顯示。
-- **實際**：跳出 `alert(1)`，腳本被執行。
-- **根因**：`app.js` 的 `renderArticlePanel` 以 `${content}` 把 `article.content` 直接放進 `innerHTML`。程式註解說明這是為了渲染爬蟲留下的 `<p>`、`<!--N-->`，但同時也讓內文成為腳本注入的入口：只要上游新聞來源或爬蟲被竄改，每個開啟該篇的使用者都會執行。
+- **實際（修正前）**：跳出 `alert(1)`，腳本被執行。
+- **根因**：`app.js` 的 `renderArticlePanel` 以 `${content}` 把 `article.content` 直接放進 `innerHTML`。程式註解說明這是為了渲染爬蟲留下的 `<p>`、`<!--N-->`，但同時也讓內文成為腳本注入的入口：只要上游新聞來源或爬蟲被竄改，每個開啟該篇的使用者都會執行。爬蟲只移除 `script`、`style` 等標籤，不處理 `onerror` 這類事件屬性，不能當作防線。
 - **影響範圍**：所有新聞詳情面板；內文來自外部網站，不受本專案控制。
-- **建議**：渲染前用白名單清理（例如 DOMPurify，只允許 `p`、`br`、`strong` 等），不要原樣插入。
+- **修正**：前端新增 `sanitizeHtml()`，以 DOMPurify 3.4.17（`vendor/purify.min.js`，sha512 已與 cdnjs 官方值比對）依白名單清理後再插入。白名單依 157 篇真實新聞內文用到的標籤制定（排版、表格、圖片加圖說、連結）。
+- **驗證**：攻擊測試轉為通過；157 篇真實內文清理後文字內容皆無變動，被移除的只有 1 個 `iframe`、1 個 `input`、1 個 `label`。DOMPurify 未載入時退回純文字顯示，不會原樣插入。
 
-## DEF-02　摘要未跳脫，前後端各漏一層
+## DEF-10　單篇摘要與類別摘要的寫入點同樣會執行腳本　✅ 已修正
 - **嚴重度**：高
+- **重現**：攔截請求讓摘要 API 回傳含 `<img src=x onerror=alert('xss')>` 的內容，再打開單篇摘要或類別摘要。
+- **實際（修正前）**：兩處都執行了腳本。類別摘要的寫入點原本沒有任何測試，是盤點所有 `innerHTML` 時發現的。
+- **根因**：`generateArticleSummary`（`${result.summary}`）與 `renderCategorySummaryResult`（`body.innerHTML = summary`）直接插入。摘要由 LLM 依外部新聞產生，內容不受控制；後端格式化（`advanced_format_summary`、`get_formatted_summary`）也不跳脫。
+- **修正**：同 DEF-01，兩處都經過 `sanitizeHtml()`；後端的跳脫仍是 DEF-02，屬第二道防線。
+- **驗證**：兩個攻擊測試轉為通過；另有回歸測試確認摘要的編號清單、類別摘要的標題與段落排版沒有被破壞。
+
+## DEF-02　後端摘要未跳脫 HTML
+- **嚴重度**：中（前端已能擋住腳本執行，剩下是顯示不正確與缺少第二道防線）
 - **重現**：開啟新聞 `9900002`（已存摘要含 `<b>`、`<script>`），點「生成 AI 摘要」。
 - **預期**：特殊字元以文字顯示。
 - **實際**：`<b>粗體標籤</b>` 被渲染成粗體；API 回傳的摘要裡 `<script>` 與 `&`、`<` 原樣存在。
-- **根因**：後端 `gemini/formatting.py` 沒有任何跳脫；前端 `app.js` 的 `generateArticleSummary` 以 `${result.summary}` 插入 `innerHTML`。摘要由 LLM 依外部新聞內容產生，等於把外部內容經過 LLM 後再原樣渲染。
-- **補充**：`innerHTML` 不會執行 `<script>` 標籤本身，但 `<img onerror>` 這類寫法可以，風險與 DEF-01 同類。
-- **建議**：後端產生 HTML 前先對文字跳脫；前端同樣經過清理。
+- **根因**：後端 `gemini/formatting.py` 沒有任何跳脫。前端無法分辨摘要裡的標籤是後端排版用的，還是 LLM 文字裡的字面內容，所以這件事只有後端能正確處理。
+- **建議**：後端在組成 HTML 前先對文字內容跳脫，再套上自己的排版標籤。
 
 ## DEF-05　不存在的新聞要求摘要回 500
 - **嚴重度**：中

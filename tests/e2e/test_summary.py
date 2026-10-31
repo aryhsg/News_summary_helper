@@ -55,7 +55,7 @@ def test_reopening_article_resets_summary_column(page):
     expect(page.locator("#btnGenerateSummary")).to_have_text("生成 AI 摘要")
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-02：後端回傳的摘要沒有跳脫 HTML、前端又以 innerHTML 插入，<b> 等標籤會被渲染")
+@pytest.mark.xfail(strict=True, reason="DEF-02：後端回傳的摘要沒有跳脫 HTML，<b> 等標籤被渲染成排版而不是顯示成文字（前端已能擋住腳本執行，見 DEF-10）")
 def test_summary_with_html_special_chars_is_not_interpreted(page):
     """E6：摘要裡的 <script>、<b> 應該以文字顯示，不能被當成標籤執行或渲染。"""
     dialogs = []
