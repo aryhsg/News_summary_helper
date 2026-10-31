@@ -82,3 +82,28 @@ def open_article(page, news_id):
 
 def click_category(page, name):
     page.locator(f'.nav-item[data-category="{name}"]').click()
+
+
+def wait_until(page, condition, timeout_ms=5000, step_ms=50):
+    """輪詢等待條件成立。等待期間用 page.wait_for_timeout，讓攔截請求的處理函式有機會執行。"""
+    waited = 0
+    while not condition():
+        if waited >= timeout_ms:
+            raise AssertionError("等待條件逾時")
+        page.wait_for_timeout(step_ms)
+        waited += step_ms
+
+
+def json_body(data):
+    import json
+
+    return json.dumps(data, ensure_ascii=False)
+
+
+def hold_requests(page, pattern):
+    """攔截符合 pattern 的請求並「扣住」不回應，回傳等待中的請求清單。
+    測試可以決定之後用 route.fulfill(...) 放行的順序與內容，以便精準重現
+    「回應還沒到」「後送出的請求先回來」這類時序情境，不必靠 sleep。"""
+    pending = []
+    page.route(pattern, lambda route: pending.append(route))
+    return pending
