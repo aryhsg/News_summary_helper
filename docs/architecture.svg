@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1580 1010" width="1580" height="1010" role="img" aria-labelledby="diagram-title">
+  <title id="diagram-title">NSH 新聞摘要助手系統架構（本機 Cloudflare Tunnel 部署）</title>
+  <defs>
+    <marker id="a-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+    <marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker>
+    <marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#15803d"/></marker>
+    <marker id="a-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker>
+    <marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c2410c"/></marker>
+  </defs>
+  <style>
+    text { font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif; fill: #0f172a; }
+    .title { font-size: 24px; font-weight: 700; }
+    .zone { font-size: 14px; font-weight: 700; fill: #475569; }
+    .name { font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .sub { font-size: 12px; fill: #475569; text-anchor: middle; }
+    .code { font-family: Consolas, Menlo, monospace; font-size: 11.5px; fill: #5b21b6; text-anchor: middle; }
+    .label { font-size: 12px; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+    .mid { text-anchor: middle; }
+    .end { text-anchor: end; }
+    .node { fill: #ffffff; stroke: #64748b; stroke-width: 1.5; }
+    .ext { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+    .line { fill: none; stroke-width: 2; }
+    .grey { stroke: #475569; }
+    .blue { stroke: #2563eb; }
+    .green { stroke: #15803d; }
+    .purple { stroke: #7c3aed; }
+    .orange { stroke: #c2410c; }
+    .t-blue { fill: #1d4ed8; }
+    .t-green { fill: #166534; }
+    .t-purple { fill: #6d28d9; }
+    .t-orange { fill: #9a3412; }
+  </style>
+
+  <rect width="1580" height="1010" fill="#ffffff"/>
+  <text class="title" x="30" y="44">NSH 新聞摘要助手：系統架構（本機 Cloudflare Tunnel 部署）</text>
+
+  <!-- 區域 -->
+  <rect x="490" y="70" width="840" height="760" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text class="zone" x="508" y="96">本機 Windows 主機</text>
+  <rect x="655" y="108" width="655" height="532" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text class="zone" x="672" y="132">Docker Compose · nsh_network</text>
+  <rect x="870" y="142" width="190" height="288" rx="8" fill="#ede9fe" stroke="#a78bfa" stroke-width="1.5"/>
+  <text class="name" x="965" y="164">應用層</text>
+  <text class="sub" x="965" y="181">共用 gemini/ 與 infrastructure/</text>
+
+  <!-- 連線 -->
+  <path class="line blue" d="M170 270H268" marker-end="url(#a-blue)"/>
+  <path class="line green" d="M170 420H268" marker-start="url(#a-green)" marker-end="url(#a-green)"/>
+  <path class="line green" d="M350 390V307" marker-end="url(#a-green)"/>
+  <path class="line grey" d="M430 270H513" marker-end="url(#a-grey)"/>
+  <path class="line grey" d="M635 270H678" marker-end="url(#a-grey)"/>
+  <path class="line blue" d="M740 235V202" marker-end="url(#a-blue)"/>
+  <path class="line blue" d="M800 255H832V220H888" marker-end="url(#a-blue)"/>
+  <path class="line green" d="M800 285H832V360H888" marker-end="url(#a-green)"/>
+  <path class="line green" d="M965 395V490H350V452" marker-end="url(#a-green)"/>
+  <path class="line purple" d="M1060 215H1138" marker-start="url(#a-purple)" marker-end="url(#a-purple)"/>
+  <path class="line purple" d="M1060 380H1138" marker-start="url(#a-purple)" marker-end="url(#a-purple)"/>
+  <path class="line purple" d="M1060 290H1368" marker-start="url(#a-purple)" marker-end="url(#a-purple)"/>
+  <path class="line orange" d="M1040 570H1215V432" marker-end="url(#a-orange)"/>
+  <path class="line orange" d="M965 610V718" marker-start="url(#a-orange)" marker-end="url(#a-orange)"/>
+  <path class="line orange" d="M1065 760H1368" marker-end="url(#a-orange)"/>
+
+  <!-- 外部：使用者與邊緣 -->
+  <rect class="ext" x="30" y="235" width="140" height="70" rx="35"/>
+  <text class="name" x="100" y="266">Web 使用者</text>
+  <text class="sub" x="100" y="285">瀏覽器</text>
+  <rect class="ext" x="30" y="390" width="140" height="60" rx="30"/>
+  <text class="name" x="100" y="425">LINE 使用者</text>
+
+  <text class="sub" x="350" y="208">newssummaryhelper.aryhsg.com</text>
+  <text class="sub" x="350" y="225">newsbot.aryhsg.com</text>
+  <rect class="ext" x="270" y="235" width="160" height="70" rx="8"/>
+  <text class="name" x="350" y="265">Cloudflare Edge</text>
+  <text class="sub" x="350" y="285">Proxy · TLS 終止</text>
+  <rect class="ext" x="270" y="390" width="160" height="60" rx="8"/>
+  <text class="name" x="350" y="425">LINE Platform</text>
+
+  <!-- 主機程序 -->
+  <rect class="node" x="515" y="235" width="120" height="70" rx="8"/>
+  <text class="name" x="575" y="265">cloudflared</text>
+  <text class="sub" x="575" y="285">主機程序，主動外連</text>
+  <rect class="node" x="865" y="720" width="200" height="80" rx="8"/>
+  <text class="name" x="965" y="752">News_api :8001</text>
+  <text class="sub" x="965" y="774">FastAPI · 主機程序 · 獨立 repo</text>
+
+  <!-- 容器 -->
+  <rect class="node" x="680" y="150" width="120" height="50" rx="8"/>
+  <text class="name" x="740" y="171" style="font-size:13px">前端靜態檔</text>
+  <text class="sub" x="740" y="189">HTML · JS · CSS</text>
+  <rect class="node" x="680" y="235" width="120" height="70" rx="8"/>
+  <text class="name" x="740" y="265">nginx :80</text>
+  <text class="sub" x="740" y="285">依網域與路徑分流</text>
+  <rect class="node" x="890" y="190" width="150" height="62" rx="8"/>
+  <text class="name" x="965" y="216">web :8000</text>
+  <text class="sub" x="965" y="236">FastAPI · X-API-KEY</text>
+  <text class="code" x="965" y="294">generate_summary_with_lock</text>
+  <rect class="node" x="890" y="330" width="150" height="65" rx="8"/>
+  <text class="name" x="965" y="357">line :5000</text>
+  <text class="sub" x="965" y="378">FastAPI · /callback</text>
+  <rect class="node" x="1140" y="180" width="150" height="70" rx="8"/>
+  <text class="name" x="1215" y="210">Redis 7</text>
+  <text class="sub" x="1215" y="231">分散式鎖（news_id）</text>
+  <rect class="node" x="1140" y="330" width="150" height="100" rx="8"/>
+  <text class="name" x="1215" y="354">PostgreSQL 15</text>
+  <text class="sub" x="1215" y="375">news</text>
+  <text class="sub" x="1215" y="393">single_news_summary</text>
+  <text class="sub" x="1215" y="411">cate_news_summary</text>
+  <rect class="node" x="890" y="530" width="150" height="80" rx="8"/>
+  <text class="name" x="965" y="558">cron</text>
+  <text class="sub" x="965" y="578">每小時：爬蟲入庫</text>
+  <text class="sub" x="965" y="596">每日 00:00：清空資料</text>
+  <rect x="680" y="530" width="160" height="80" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text class="name" x="760" y="556" style="font-size:13px;fill:#475569">未排程（程式碼保留）</text>
+  <text class="sub" x="760" y="576">批次單篇摘要</text>
+  <text class="sub" x="760" y="594">類別彙總摘要</text>
+
+  <!-- 外部服務 -->
+  <rect class="ext" x="1370" y="250" width="180" height="80" rx="8"/>
+  <text class="name" x="1460" y="284">Google Gemini API</text>
+  <text class="sub" x="1460" y="306">gemini-3.7-flash</text>
+  <rect class="ext" x="1370" y="720" width="180" height="80" rx="8"/>
+  <text class="name" x="1460" y="754">經濟日報</text>
+  <text class="sub" x="1460" y="776">money.udn.com</text>
+
+  <!-- 連線標籤 -->
+  <text class="label mid t-blue" x="219" y="260">HTTPS</text>
+  <text class="label mid t-green" x="219" y="410">訊息 / 回覆</text>
+  <text class="label t-green" x="360" y="343">Webhook</text>
+  <text class="label t-green" x="360" y="360">POST /callback</text>
+  <text class="label mid" x="472" y="260">Tunnel</text>
+  <text class="label mid" x="657" y="260">HTTP</text>
+  <text class="label end t-blue" x="826" y="225">/api/*</text>
+  <text class="label end t-green" x="826" y="330">newsbot.*</text>
+  <text class="label mid t-green" x="650" y="482">Reply API（api.line.me）· Flex Message</text>
+  <text class="label mid t-purple" x="1099" y="205">鎖</text>
+  <text class="label mid t-purple" x="1099" y="370">讀 / 寫</text>
+  <text class="label mid t-purple" x="1215" y="282">單篇摘要生成</text>
+  <text class="label mid t-orange" x="1128" y="560">寫入 news</text>
+  <text class="label mid t-orange" x="1128" y="590">00:00 TRUNCATE</text>
+  <text class="label t-orange" x="977" y="665">GET /api/scrape-all-news/</text>
+  <text class="label t-orange" x="977" y="683">X-CRON-TOKEN · 回傳新聞 JSON</text>
+  <text class="label mid t-orange" x="1215" y="750">爬取新聞</text>
+
+  <!-- 圖例 -->
+  <rect x="30" y="850" width="1520" height="135" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text class="zone" x="50" y="878">圖例</text>
+  <path class="line blue" d="M50 900H90" marker-end="url(#a-blue)"/><text x="100" y="905" font-size="13">網頁請求</text>
+  <path class="line green" d="M50 925H90" marker-end="url(#a-green)"/><text x="100" y="930" font-size="13">LINE 訊息</text>
+  <path class="line purple" d="M50 950H90" marker-end="url(#a-purple)"/><text x="100" y="955" font-size="13">摘要與資料存取</text>
+  <path class="line orange" d="M230 900H270" marker-end="url(#a-orange)"/><text x="280" y="905" font-size="13">排程工作</text>
+  <path class="line grey" d="M230 925H270" marker-end="url(#a-grey)"/><text x="280" y="930" font-size="13">共用入口流量</text>
+  <text class="zone" x="470" y="878">單篇摘要流程（web 與 line 共用）</text>
+  <text x="470" y="905" font-size="13">1. 查 PostgreSQL，已有摘要就直接回傳</text>
+  <text x="470" y="930" font-size="13">2. 沒有則取得 Redis 鎖（timeout 60 秒），再查一次避免重複生成</text>
+  <text x="470" y="955" font-size="13">3. 呼叫 Gemini 生成，寫回 single_news_summary，釋放鎖</text>
+  <text class="zone" x="1040" y="878">部署備註</text>
+  <text x="1040" y="905" font-size="13">本圖為 local-cloudflare-tunnel-deploy 分支的架構</text>
+  <text x="1040" y="930" font-size="13">main 的 GitHub Actions 仍以 SSH 部署到 VPS，未列入本圖</text>
+  <text x="1040" y="955" font-size="13">外部流量經 Tunnel 進入 nginx；主機另發布 5432、6379</text>
+</svg>
