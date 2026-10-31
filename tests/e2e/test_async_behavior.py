@@ -4,6 +4,7 @@
 列表等其他資料仍然來自真實後端。
 """
 import re
+from urllib.parse import unquote
 
 from playwright.sync_api import expect
 
@@ -26,8 +27,8 @@ def test_search_is_debounced_into_a_single_request(page):
     page.on("request", lambda r: requests_seen.append(r.url) if "/api/news/search" in r.url else None)
     open_home(page)
 
-    page.locator("#searchInput").press_sequentially("etf", delay=60)  # 每字間隔遠小於 350ms
-    page.wait_for_timeout(900)
+    page.locator("#searchInput").press_sequentially("etf", delay=60)  # 每字間隔遠小於防抖時間（500ms）
+    page.wait_for_timeout(1200)
 
     assert len(requests_seen) == 1, f"預期防抖後只有 1 次搜尋請求，實際 {len(requests_seen)} 次：{requests_seen}"
     assert requests_seen[0].endswith("q=etf"), requests_seen[0]  # 完整字串，不是中途的片段
@@ -40,9 +41,9 @@ def test_search_sends_a_new_request_after_a_pause(page):
     open_home(page)
 
     page.locator("#searchInput").press_sequentially("et", delay=60)
-    page.wait_for_timeout(700)
+    page.wait_for_timeout(1000)
     page.locator("#searchInput").press_sequentially("f", delay=60)
-    page.wait_for_timeout(700)
+    page.wait_for_timeout(1000)
 
     assert len(requests_seen) == 2, requests_seen
     assert requests_seen[0].endswith("q=et") and requests_seen[1].endswith("q=etf")
@@ -160,3 +161,39 @@ def test_late_summary_does_not_leak_into_another_article(page):
     expect(page.locator("#summaryContainer")).to_be_empty()
     expect(page.locator("#btnGenerateSummary")).to_have_text("生成 AI 摘要")
     expect(page.locator("#btnGenerateSummary")).to_be_enabled()
+
+
+# --- 輸入法（IME）組字 ----------------------------------------------------------------
+
+def test_search_ignores_ime_composition_and_searches_once_per_committed_text(page):
+    """C9：用注音輸入法打中文時，組字中的注音符號不該被拿去搜尋；選字確認之後才搜尋。
+    模擬「味全」：每個字都先組字（ㄨㄟˋ）、停頓超過防抖時間、再選字確認。
+    （只有英文字母的測試測不到這個：真實的中文輸入會觸發輸入法組字事件。）"""
+    queries = []
+    page.on("request", lambda r: queries.append(unquote(r.url.split("q=")[-1])) if "/api/news/search" in r.url else None)
+    open_home(page)
+    cdp = page.context.new_cdp_session(page)
+    page.locator("#searchInput").focus()
+
+    def compose(zhuyin):
+        cdp.send("Input.imeSetComposition", {"text": zhuyin, "selectionStart": len(zhuyin), "selectionEnd": len(zhuyin)})
+
+    def commit(char):
+        cdp.send("Input.insertText", {"text": char})
+
+    compose("ㄨㄟˋ")
+    page.wait_for_timeout(900)                      # 停頓超過防抖時間，組字中仍不該搜尋
+    assert queries == [], f"組字中就送出了搜尋：{queries}"
+
+    commit("味")
+    page.wait_for_timeout(900)
+    assert queries == ["味"], queries
+
+    compose("ㄑㄩㄢˊ")
+    page.wait_for_timeout(900)
+    assert queries == ["味"], f"第二個字組字中又送出了搜尋：{queries}"
+
+    commit("全")
+    page.wait_for_timeout(900)
+    assert queries == ["味", "味全"], queries
+    expect(page.locator("#searchInput")).to_have_value("味全")

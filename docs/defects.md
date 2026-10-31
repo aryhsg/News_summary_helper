@@ -11,6 +11,8 @@
 |---|---|---|---|---|
 | DEF-01 | 高 | ✅ 已修正（前端） | 新聞內文以 `innerHTML` 插入，內文含 `<img onerror>` 時腳本會執行 | `test_security.py::test_malicious_content_does_not_execute_script` |
 | DEF-10 | 高 | ✅ 已修正（前端） | 單篇摘要與類別摘要以 `innerHTML` 插入，`<img onerror>` 會執行 | `test_security.py::test_single_summary_…`、`test_category_summary_…` |
+| DEF-11 | 低 | ✅ 已修正（前端） | 用輸入法打中文時，組字中的注音符號也被拿去搜尋，每個字各送一次請求並讓畫面閃爍 | `test_async_behavior.py::test_search_ignores_ime_composition_and_searches_once_per_committed_text` |
+| DEF-12 | 中 | ✅ 已修正（後端） | 單篇摘要的輸出上限 2048 token 被「思考」用掉，輸出被截斷、JSON 解析失敗，使用者看到 500 | `tests/test_gemini_failures.py` |
 | DEF-02 | 中 | 未修 | 後端回傳的摘要未跳脫 HTML，`<b>` 等標籤被渲染而不是顯示成文字 | `test_summary.py::test_summary_with_html_special_chars_is_not_interpreted` |
 | DEF-05 | 中 | ✅ 已修正（後端） | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
 | DEF-04 | 中 | ✅ 已修正（後端） | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
@@ -41,6 +43,43 @@
 - **根因**：`generateArticleSummary`（`${result.summary}`）與 `renderCategorySummaryResult`（`body.innerHTML = summary`）直接插入。摘要由 LLM 依外部新聞產生，內容不受控制；後端格式化（`advanced_format_summary`、`get_formatted_summary`）也不跳脫。
 - **修正**：同 DEF-01，兩處都經過 `sanitizeHtml()`；後端的跳脫仍是 DEF-02，屬第二道防線。
 - **驗證**：兩個攻擊測試轉為通過；另有回歸測試確認摘要的編號清單、類別摘要的標題與段落排版沒有被破壞。
+
+## DEF-11　用輸入法打中文時，每個字都送出搜尋（含組字中的注音）　✅ 已修正
+- **嚴重度**：低（影響體驗與後端請求量）
+- **重現**：用注音輸入法在搜尋框打「味全龍」。
+- **預期**：停下來之後才搜尋，組字中的注音符號不會被搜尋。
+- **實際（修正前）**：3 個字送出 6 次請求，包括 `ㄨㄟˋ`、`味ㄑㄩㄢˊ` 這類組字中的暫時內容；查不到結果時畫面會閃出「找不到符合搜尋條件的新聞」。
+- **根因**：
+  1. `onSearchInput` 監聽 `input` 事件，輸入法組字過程中這個事件照樣觸發，沒有排除組字狀態。
+  2. 防抖只有 350ms，打中文時字與字之間要按好幾個鍵再選字，停頓很容易超過，每個字都被當成「已經停下來」。
+- **為什麼原本的防抖測試沒抓到**：那個測試用英文字母快速連打，驗證的是防抖機制本身；Playwright 輸入中文會一次插入整串字，不會觸發組字事件，所以測不到真實的中文輸入。
+- **修正**：`app.js` 的 `onSearchInput` 在 `e.isComposing` 為真時直接略過，並新增 `compositionend` 監聽，組字結束時再搜尋；防抖時間抽成常數 `SEARCH_DEBOUNCE_MS` 並放寬到 500ms。
+- **驗證**：新增用 CDP `Input.imeSetComposition`／`Input.insertText` 模擬注音輸入的測試：組字中停頓超過防抖時間也不送請求，選字確認後各送一次（`味`、`味全`）。拿掉 `isComposing` 判斷後該測試失敗（組字中送出 `ㄨㄟˋ`）。
+
+## DEF-12　單篇摘要偶爾回 500：輸出被思考用掉而截斷　✅ 已修正
+- **嚴重度**：中（偶發，但使用者點擊「生成 AI 摘要」直接看到錯誤）
+- **重現**：點擊沒有摘要的新聞的「生成 AI 摘要」，偶爾回 500；不是每次都發生。
+- **預期**：正常產生摘要；真的失敗時給使用者看得懂的訊息。
+- **實際（修正前）**：web 容器紀錄有 `JSONDecodeError`（兩次，位置都在輸出的第 106 到 112 個字元，分別是「字串沒有結尾」與「逗號後面期待下一個欄位」，是 JSON 被攔腰截斷的典型錯誤）。
+- **根因**：`gemini/client.py` 的單篇摘要 `max_output_tokens = 2048`。Gemini 的思考 token 也算在這個上限裡（官方文件），長文章的思考就能用掉 1700 多，剩下的空間寫不完 JSON。實測 6 篇較長的文章：思考 546 到 1732 token、實際輸出 220 到 350 token，其中一篇合計 2013，離上限只剩 35 個 token。後端又沒有檢查回應是否正常結束，直接把截斷的文字交給 `json.loads`。
+- **限制**：失敗當時的原始輸出沒有被記錄，所以「被截斷」是由失敗位置與餘裕推論，不是直接重現。
+- **修正**：
+  1. 單篇摘要的 `max_output_tokens` 提高到 8192。
+  2. 單篇摘要的思考程度降為 `low`（批次與類別摘要維持預設，類別摘要需要跨篇推理）。
+  3. `generate_summary` 檢查 `finish_reason`，不是正常結束或內容為空就丟 `GeminiResponseError` 並記錄原因；JSON 解析失敗也包成同一個例外並記錄原始回應（截短）。
+  4. 單篇摘要失敗時自動重試一次。
+  5. Web API 對仍然失敗的情況回 502「摘要暫時產生失敗，請稍後再試」，LINE 回覆同樣訊息（原本 LINE 沒有任何回應）。
+- **思考程度比較**（4 篇已有摘要的新聞，同一份內容各生成一次，未寫入資料庫）：
+
+  | | 預設 | low |
+  |---|---|---|
+  | 思考 token | 643 到 1504（平均約 1179） | 0 |
+  | 計費的輸出 token（思考加輸出，4 篇合計） | 5922 | 1198（約少 80%） |
+  | 耗時（平均） | 約 13.3 秒 | 約 4.6 秒 |
+  | 摘要中的數字在原文找不到的個數 | 0 | 0 |
+
+  兩者的數字都有原文出處。預設版的味全龍那篇出現原文沒有的「家樂福」（舊的資料庫摘要也有），low 版沒有；樣本只有 4 篇，不能據此說預設版比較容易出錯。
+- **驗證**：單元測試 12 個（設定、截斷、空回應、重試、502、LINE 回覆）；真實 Gemini 呼叫走完整路徑確認新設定可用且正常結束。
 
 ## DEF-02　後端摘要未跳脫 HTML
 - **嚴重度**：中（前端已能擋住腳本執行，剩下是顯示不正確與缺少第二道防線）
