@@ -63,7 +63,6 @@ def test_close_by_clicking_overlay(page):
     expect(page.locator("#articlePanel")).to_be_hidden()
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-06：.card-title 沒有處理超長無空白字串的換行，標題超出卡片寬度")
 def test_very_long_unbroken_title_does_not_overflow_page(page):
     """D6：標題是一長串沒有空白的英文時，不應該撐破版面造成頁面橫向捲動。"""
     open_home(page)

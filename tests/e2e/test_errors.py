@@ -33,7 +33,6 @@ def test_403_shows_banner_and_empty_state(page):
     expect(page.locator("#nav-count-all")).to_have_text("0")
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-08：403 的使用者訊息提到 config.js 與 API_KEY（app.js 的 ApiError）")
 def test_403_message_does_not_leak_developer_details(page):
     """G1：給一般使用者看的錯誤訊息不該出現 config.js 這類開發用語。"""
     page.route("**/api/news", lambda r: fulfill_json(r, 403, {"detail": "Access Denied"}))
@@ -56,7 +55,6 @@ def test_network_failure_shows_banner(page):
     expect(page.locator("#statusBanner")).to_contain_text("無法連線到後端伺服器")
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-09：連線失敗的使用者訊息提到 CORS、API_BASE（app.js 的 ApiError）")
 def test_network_failure_message_does_not_leak_developer_details(page):
     """G3：連線失敗訊息不該提到 CORS、API_BASE 這類開發用語。"""
     page.route("**/api/news", lambda r: r.abort())
@@ -80,7 +78,6 @@ def test_search_error_shows_message_and_recovers(page):
     expect(page.locator(".news-card")).to_have_count(2)
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-07：前端把「該類別尚無摘要」也存進 categorySummaryCache，之後後端產生了也要重新整理頁面才看得到")
 def test_category_summary_note_is_not_cached_forever(page):
     """F5：類別摘要一開始「尚無摘要」，之後後端產生了，同一個頁面再開應該看到新內容。
     前端把「尚無摘要」也存進快取，所以要重新整理頁面才會更新。"""
@@ -116,3 +113,23 @@ def test_failed_category_summary_is_not_cached(page):
 
     page.locator("#categorySummaryBtn").click()
     expect(page.locator("#categoryModalBody")).to_contain_text("期貨趨勢")
+
+
+def test_category_summary_with_content_is_still_cached(page):
+    """F5（回歸）：只有「尚無摘要」不快取；有內容的類別摘要仍會快取，再開不重新請求。"""
+    calls = []
+
+    def handler(route):
+        calls.append(1)
+        fulfill_json(route, 200, {"category": "期貨", "summary": "<p>期貨趨勢</p>"})
+
+    page.route("**/api/news/summary/**", handler)
+    open_home(page)
+    click_category(page, "期貨")
+
+    page.locator("#categorySummaryBtn").click()
+    expect(page.locator("#categoryModalBody")).to_contain_text("期貨趨勢")
+    page.keyboard.press("Escape")
+    page.locator("#categorySummaryBtn").click()
+    expect(page.locator("#categoryModalBody")).to_contain_text("期貨趨勢")
+    assert len(calls) == 1, f"預期只請求 1 次，實際 {len(calls)} 次"

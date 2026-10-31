@@ -15,12 +15,12 @@
 | DEF-05 | 中 | 未修 | 對不存在的新聞要求摘要回 500，應為 404 | `test_api.py::test_summary_for_nonexistent_news_is_404_not_500` |
 | DEF-04 | 中 | 未修 | 搜尋框寫「標題或關鍵字」，但關鍵字只能完全相等才找得到 | `test_search.py::test_search_matches_partial_keyword` |
 | DEF-03 | 低 | 未修 | 搜尋 `%`、`_` 被當成萬用字元，`%` 會列出全部新聞 | `test_search.py::test_percent_sign_is_searched_literally` |
-| DEF-06 | 低 | 未修 | 超長無空白標題超出卡片寬度 | `test_article_panel.py::test_very_long_unbroken_title_does_not_overflow_page` |
-| DEF-07 | 低 | 未修 | 「該類別尚無摘要」被快取，後端之後產生了也要重新整理才看得到 | `test_errors.py::test_category_summary_note_is_not_cached_forever` |
-| DEF-08 | 低 | 未修 | 403 的使用者訊息提到 `config.js`、`API_KEY` | `test_errors.py::test_403_message_does_not_leak_developer_details` |
-| DEF-09 | 低 | 未修 | 連線失敗的使用者訊息提到 CORS、`API_BASE` | `test_errors.py::test_network_failure_message_does_not_leak_developer_details` |
+| DEF-06 | 低 | ✅ 已修正（前端） | 超長無空白標題超出卡片寬度 | `test_article_panel.py::test_very_long_unbroken_title_does_not_overflow_page` |
+| DEF-07 | 低 | ✅ 已修正（前端） | 「該類別尚無摘要」被快取，後端之後產生了也要重新整理才看得到 | `test_errors.py::test_category_summary_note_is_not_cached_forever` |
+| DEF-08 | 低 | ✅ 已修正（前端） | 403 的使用者訊息提到 `config.js`、`API_KEY` | `test_errors.py::test_403_message_does_not_leak_developer_details` |
+| DEF-09 | 低 | ✅ 已修正（前端） | 連線失敗的使用者訊息提到 CORS、`API_BASE` | `test_errors.py::test_network_failure_message_does_not_leak_developer_details` |
 
-「未修」的缺陷在測試裡是 `xfail(strict=True)`；已修正的缺陷已拿掉標記，現在是一般的通過測試，作為回歸保護。
+「未修」的缺陷在測試裡是 `xfail(strict=True)`；已修正的缺陷已拿掉標記，現在是一般的通過測試，作為回歸保護。目前未修的有 DEF-02、03、04、05 四個。
 
 ---
 
@@ -75,35 +75,39 @@
 - **根因**：`web_search_news` 把使用者輸入包成 `f"%{keyword}%"`，沒有跳脫 `%` 與 `_`。不是 SQL 注入（參數化查詢，另有測試確認），但搜尋結果不正確。
 - **建議**：先把使用者輸入中的 `\`、`%`、`_` 跳脫，再包 `%`。
 
-## DEF-06　超長無空白標題超出卡片
+## DEF-06　超長無空白標題超出卡片　✅ 已修正
 - **嚴重度**：低
 - **重現**：列表中新聞 `9900003`（標題是一長串無空白英文）。
 - **預期**：標題在卡片內換行或截斷，版面不被撐開。
 - **實際**：標題的內容寬度大於卡片寬度。
 - **根因**：`styles.css` 的 `.card-title` 只設定 `-webkit-line-clamp`，沒有 `overflow-wrap`／`word-break`，無空白的字串不會換行。
 - **建議**：加上 `overflow-wrap: anywhere`。
+- **修正**：`styles.css` 的 `.card-title` 加上 `overflow-wrap: anywhere`。對應測試轉為通過。
 
-## DEF-07　「尚無摘要」被快取
+## DEF-07　「尚無摘要」被快取　✅ 已修正
 - **嚴重度**：低
 - **重現**：選「兩岸」→ 按「生成分類摘要」看到「尚無摘要」→ 關閉；之後後端產生該類別摘要 → 同一頁面再按一次。
 - **預期**：看到新的摘要。
 - **實際**：仍是「尚無摘要」，要重新整理頁面。
 - **根因**：`app.js` 的 `openCategoryModal` 把任何成功回應（包含「該類別尚無摘要」）存進 `categorySummaryCache`。
 - **建議**：不要快取「尚無摘要」，或給快取加過期時間。失敗的請求有確實不快取（有測試）。
+- **修正**：`app.js` 的 `openCategoryModal` 不再快取「該類別尚無摘要」。這個端點只是對主鍵查一筆資料，重新請求的成本很低；有內容的摘要仍然快取，另有回歸測試確認只請求一次。
 
-## DEF-08　403 訊息洩漏開發細節
+## DEF-08　403 訊息洩漏開發細節　✅ 已修正
 - **嚴重度**：低
 - **重現**：金鑰錯誤時載入頁面。
 - **實際**：橫幅寫「請確認 config.js 裡的 API_KEY 是否填寫正確」，對一般使用者沒有意義，也透露前端的設定檔名稱。
 - **根因**：`app.js` 的 `apiRequest` 對 403 拋出的訊息。
 - **建議**：對使用者顯示通用訊息，細節寫進 `console.error`。
+- **修正**：畫面訊息改為「API 金鑰驗證失敗，請重新整理頁面後再試；若持續發生請聯絡管理員」，排查提示改寫進 `console.error`。
 
-## DEF-09　連線失敗訊息提到 CORS 與 API_BASE
+## DEF-09　連線失敗訊息提到 CORS 與 API_BASE　✅ 已修正
 - **嚴重度**：低
 - **重現**：後端無法連線時載入頁面。
 - **實際**：橫幅提到 `API_BASE` 與 CORS。
 - **根因**：`app.js` 的 `apiRequest` 對網路錯誤拋出的訊息。
 - **建議**：同 DEF-08。
+- **修正**：畫面訊息改為「無法連線到後端伺服器，請檢查網路連線後再試一次」，CORS 與 `API_BASE` 的提示改寫進 `console.error`。
 
 ---
 
