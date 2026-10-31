@@ -16,13 +16,13 @@ services:
       - nsh_postgres_data:/var/lib/postgresql/data
       - ./infrastructure/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   redis:
     volumes:
       - nsh_redis_data:/data
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   nginx:
     # volumes/ports 用 !override 整個取代，不要用預設的合併行為——
@@ -32,22 +32,22 @@ services:
     volumes: !override
       - ./infrastructure/news_database/nginx/local.conf:/etc/nginx/conf.d/default.conf:ro
       - ../News_summary_helper_frontend:/usr/share/nginx/html:ro
+    # 只綁 127.0.0.1：cloudflared 跑在同一台主機上，區網其他裝置不需要
+    # 也不該直接連到這個明文 HTTP 的 port（db/redis 同理）。
     ports: !override
-      - "80:80"
+      - "127.0.0.1:80:80"
 
   web:
-    # .env 裡的 HOST/REDIS_URL/NEWS_API 是給「直接在 Windows host 上跑」
-    # 用的（scrape_n_store.py、daily_truncate_tables.py 等仍然這樣跑）。
+    # .env 裡的 HOST/REDIS_URL 是給「直接在 Windows host 上跑」用的
+    # （scrape_n_store.py、daily_truncate_tables.py 等仍然這樣跑）。
     # web/line 現在改成 docker container，container 裡的 localhost
-    # 指的是 container 自己，連不到 db/redis container 或 host 上的
-    # News_api，所以這裡覆蓋成 container 看得到的位址：db/redis 用
-    # compose service name（docker 內部 DNS），News_api 用
-    # host.docker.internal 連回 host。environment 的優先權比 env_file 高，
-    # 不會動到 .env 本身。
+    # 指的是 container 自己，連不到 db/redis container，所以這裡覆蓋成
+    # container 看得到的位址：db/redis 用 compose service name
+    # （docker 內部 DNS）。environment 的優先權比 env_file 高，不會動到
+    # .env 本身。web 不會自己爬新聞，所以不需要 NEWS_API（只有 cron 用）。
     environment:
       HOST: db
       REDIS_URL: redis://redis:6379/0
-      NEWS_API: http://host.docker.internal:8001/api/scrape-all-news/
 
   line:
     environment:
