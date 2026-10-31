@@ -1,0 +1,84 @@
+# Playwright 前端測試用的獨立環境（第 2 層：真實後端 + 固定測試資料）。
+#
+# 跟正式的 docker-compose.yml 完全獨立：不疊加 override、不共用容器/網路/
+# volume，也不跑 cron 和 line。資料庫放在記憶體（tmpfs），每次啟動都是乾淨
+# 的並重新灌入 data/seed.sql，不會被每天 00:00 的清空影響，也碰不到真實資料。
+# Gemini 用假金鑰：測試只會讀到預先灌入的摘要，沒有摘要的新聞點擊生成時
+# 會呼叫失敗，不會誤花真實額度，同時剛好可以測錯誤畫面。
+#
+# 用法（在專案根目錄）：
+#   docker compose -f tests/e2e/docker-compose.e2e.yml -p nsh_e2e up -d --build
+#   docker compose -f tests/e2e/docker-compose.e2e.yml -p nsh_e2e down -v
+# 頁面網址：http://localhost:8080
+name: nsh_e2e
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e-password
+      POSTGRES_DB: e2e_news
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ../../infrastructure/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./data/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e -d e2e_news"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --requirepass e2e-redis-password
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "e2e-redis-password", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: ../..
+    environment:
+      DB_USERNAME: e2e
+      DB_PASSWORD: e2e-password
+      DB_NAME: e2e_news
+      HOST: db
+      PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      REDIS_PASSWORD: e2e-redis-password
+      INTERNAL_API_KEY: e2e-test-key-not-a-secret
+      # 假金鑰：確保測試不會誤用真實 Gemini 額度
+      GEMINI_API_KEY: e2e-fake-gemini-key
+      # main_apps.py 啟動時會同時建立 line app，需要這兩個變數（假值即可）
+      WEBHOOK_URL: https://example.test/callback
+      LINE_CHANNEL_SECRET: e2e-fake-line-secret
+      ChannelAccessToken: e2e-fake-line-token
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "gunicorn",
+        "--workers", "1",
+        "--worker-class", "uvicorn.workers.UvicornWorker",
+        "--bind", "0.0.0.0:8000",
+        "main_apps:web_app",
+      ]
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./nginx.e2e.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../../../News_summary_helper_frontend:/usr/share/nginx/html:ro
+      # 用測試專用的 config.js 覆蓋前端的 config.js（金鑰不依賴真實的那份）
+      - ./frontend/config.js:/usr/share/nginx/html/config.js:ro
+    depends_on:
+      - web
