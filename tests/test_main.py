@@ -22,6 +22,13 @@ web_app = create_web_app(db_instance=db_instance, gemini_instance=gemini_instanc
 client = TestClient(web_app)
 
 
+def test_health_does_not_require_api_key():
+    """healthcheck 不帶金鑰也要能確認服務狀態"""
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
 
 @pytest.mark.asyncio
 async def test_get_news_success(monkeypatch):
