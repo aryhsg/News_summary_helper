@@ -9,15 +9,40 @@
 """
 import json
 import asyncio
+import logging
 
 from constants import BATCH_SUMMARY_CATEGORIES
 from gemini.formatting import points_to_numbered_string
+from infrastructure.exceptions import GeminiResponseError
+
+logger = logging.getLogger(__name__)
 
 
-async def generate_single_summary(gemini_instance, contents_json: str):
-    """呼叫 sg 模式，回傳 (news_id, summary_str)。"""
-    raw = await gemini_instance.generate_summary(instruction_type="sg", contents=contents_json)
-    result = json.loads(raw)
+def _parse_json(raw: str, mode: str):
+    """把 Gemini 的回應解析成 JSON。解析失敗時記下原始回應（截短）並丟
+    GeminiResponseError，這樣日後能查到模型到底回了什麼，也不會讓使用者看到
+    未處理的 JSONDecodeError（500）。"""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.error("Gemini 回傳的不是有效 JSON：mode=%s error=%s raw=%r", mode, exc, (raw or "")[:500])
+        raise GeminiResponseError(f"Gemini 回傳的不是有效 JSON（mode={mode}）") from exc
+
+
+async def generate_single_summary(gemini_instance, contents_json: str, attempts: int = 2):
+    """呼叫 sg 模式，回傳 (news_id, summary_str)。
+
+    模型偶爾會回傳無法使用的內容（輸出被截斷、JSON 格式錯誤），重試一次通常就
+    正常，所以最多嘗試 attempts 次；每次都失敗才丟出 GeminiResponseError。"""
+    for attempt in range(1, attempts + 1):
+        try:
+            raw = await gemini_instance.generate_summary(instruction_type="sg", contents=contents_json)
+            result = _parse_json(raw, "sg")
+            break
+        except GeminiResponseError:
+            if attempt == attempts:
+                raise
+            logger.warning("單篇摘要第 %d 次回應無法使用，重試", attempt)
     summary_str = points_to_numbered_string(result.get("points", []))
     return result.get("news_id", ""), summary_str
 
@@ -25,7 +50,7 @@ async def generate_single_summary(gemini_instance, contents_json: str):
 async def generate_batch_summaries(gemini_instance, contents_json: str):
     """呼叫 batch 模式，回傳 [(news_id, summary_str), ...]。"""
     raw = await gemini_instance.generate_summary(instruction_type="batch", contents=contents_json)
-    results = json.loads(raw)
+    results = _parse_json(raw, "batch")
     return [
         (news.get("news_id", ""), points_to_numbered_string(news.get("points", [])))
         for news in results

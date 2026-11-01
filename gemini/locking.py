@@ -8,6 +8,7 @@ import json
 import asyncio
 
 from gemini import generation
+from infrastructure.exceptions import NewsNotFoundError
 
 
 async def generate_summary_with_lock(news_id: int, db_instance, redis_instance, gemini_instance):
@@ -29,6 +30,10 @@ async def generate_summary_with_lock(news_id: int, db_instance, redis_instance, 
 
         print("該新聞目前無摘要，正在生成中...")
         query_result = await db_instance.fetch_news_content(news_id)  # [(news_id, title, content, category)]
+        if not query_result:
+            # 新聞不存在（例如每日清空資料後，舊頁面/舊 LINE 按鈕還指著已被清掉的新聞）。
+            # 不能再往下取 query_result[0]，也不該去呼叫 Gemini。
+            raise NewsNotFoundError(str(news_id))
         contents = json.dumps(query_result)  # GEMINI不收list，所以要轉成json字串
         title = query_result[0].get("title")
         category = query_result[0].get("category")

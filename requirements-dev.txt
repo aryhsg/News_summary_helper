@@ -3,3 +3,7 @@
 # 這份檔案時自己解析，不在 requirements.txt 裡手動列出。
 -r requirements.txt
 locust==2.43.3
+
+# 前端 E2E 測試（tests/e2e/）。裝完套件後還要下載瀏覽器：
+#   python -m playwright install chromium
+pytest-playwright==0.10.0

@@ -126,29 +126,19 @@ async def test_get_news_summary_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_news_summary_not_found(monkeypatch):
-    """測試抓取新聞摘要但指定的新聞 ID 不存在的情境"""
+    """測試抓取新聞摘要但指定的新聞 ID 不存在的情境：要回 404。
 
-    # 1. 建立一個非同步的模擬函數，模擬從資料庫抓取特定新聞摘要但回傳 None
-    mock_fetch = AsyncMock(return_value=(None, None))  
+    （原本這個測試模擬「找不到時回 (None, None)」並預期 200 加空摘要，但真實的
+    generate_summary_with_lock 從來不會回 (None, None)，而是在取 query_result[0]
+    時拋出例外變成 500。現在改成明確丟 NewsNotFoundError，由 API 轉成 404。）"""
+    from infrastructure.exceptions import NewsNotFoundError
 
-    def mock_format(text):
-        if text is None:
-            return ""
-        return f"{text}"
-    # 2. 替換原本的 locking.generate_summary_with_lock 成我們的模擬函數
-    monkeypatch.setattr(locking, "generate_summary_with_lock", mock_fetch)
-    # advanced_format_summary 是純函式（gemini/formatting.py），web/fastapi_service.py
-    # 用 flat import 取用，所以要在呼叫端（fastapi_service）這個命名空間上 patch，
-    # 而不是在它原本定義的模組上 patch（跟下面 get_formatted_summary 的 patch 方式一致）。
-    monkeypatch.setattr(target=fastapi_service, name="advanced_format_summary", value=mock_format)
-    # 3. 發送 POST 請求到 /api/news/99999/summary 路徑，這裡的 99999 是一個不存在的新聞 ID
+    monkeypatch.setattr(locking, "generate_summary_with_lock", AsyncMock(side_effect=NewsNotFoundError("99999")))
+
     response = client.post("/api/news/99999/summary", headers=headers)
 
-    # 4. 驗證回應的狀態碼是 200，表示成功（即使沒有摘要也不會報錯）
-    assert response.status_code == 200
-
-    # 5. 驗證回應的 JSON 資料中的 summary 是 None 或者是一個空字符串
-    assert response.json()["summary"] in (None, "")
+    assert response.status_code == 404
+    assert "detail" in response.json()
 
 
 @pytest.mark.asyncio
