@@ -13,10 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13.5
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13.5"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
@@ -46,11 +46,12 @@ jobs:
           # -ra: 顯示最後的總結報告
           pytest -v -ra
 
-  # 第二階段：部署 (只有測試過關且推送到 main 才會執行)
+  # 第二階段：部署到舊 VPS。正式環境已改為本機 Cloudflare Tunnel，
+  # 雲端機器連不到，先停用，避免測試通過後部署到舊主機。
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false
 
     steps:
       - name: Deploy to Debian VPS via SSH
