@@ -91,6 +91,12 @@ def create_web_app(db_instance, gemini_instance, redis_instance):
         # 這是上游服務的問題，回 502（不是我們程式的 500），並給使用者能看懂的說明。
         return JSONResponse(status_code=502, content={"detail": "摘要暫時產生失敗，請稍後再試"})
 
+    # 給容器 healthcheck 用：只確認服務能回應，不查資料庫，也不需要金鑰。
+    # 路徑放在 /api/ 外面，nginx 不會轉發，外部連不到。
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
     @app.get("/api/news", response_model=List[NewsListItem])
     async def get_news_list(_ = Depends(get_api_key)):
         news = await db_instance.web_fetch_news()

@@ -19,6 +19,15 @@ def test_missing_or_wrong_key_is_rejected(path):
         assert "detail" in r.json()
 
 
+def test_health_endpoint_is_not_exposed_through_nginx():
+    """J1：/health 只給容器內部的 healthcheck 用，nginx 不轉發到後端。"""
+    import requests
+
+    r = requests.get(url("/health"), timeout=10)
+    assert r.status_code == 404
+    assert "status" not in r.text
+
+
 def test_news_list_shape(api, sample):
     """J2：列表回傳全部新聞，欄位與型別正確。"""
     r = api.get(url("/api/news"), timeout=10)

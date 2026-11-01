@@ -1,8 +1,6 @@
 name: E2E Tests
 
 on:
-  push:
-    branches: ["local-cloudflare-tunnel-deploy"]
   pull_request:
     branches: ["main"]
 
@@ -58,11 +56,6 @@ jobs:
         run: |
           touch ../News_summary_helper_frontend/config.js
           docker compose -f tests/e2e/docker-compose.e2e.yml up -d --build --wait
-
-      # web 沒有 healthcheck，nginx 起來不代表後端已經能回應
-      - name: Wait for API
-        run: |
-          timeout 60 bash -c 'until curl -fs -H "X-API-KEY: e2e-test-key-not-a-secret" http://localhost:8080/api/news > /dev/null; do sleep 2; done'
 
       - name: Run E2E tests
         run: pytest tests/e2e -v -ra --tracing=retain-on-failure --screenshot=only-on-failure --output=test-results

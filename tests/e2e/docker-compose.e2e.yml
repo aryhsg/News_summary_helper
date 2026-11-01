@@ -62,6 +62,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      # 映像檔沒有 curl，用 Python 內建的 urllib
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
     command:
       [
         "gunicorn",
@@ -81,4 +87,11 @@ services:
       # 用測試專用的 config.js 覆蓋前端的 config.js（金鑰不依賴真實的那份）
       - ./frontend/config.js:/usr/share/nginx/html/config.js:ro
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    healthcheck:
+      # nginx 只監聽 IPv4，localhost 會先解析成 ::1 而連不上
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
